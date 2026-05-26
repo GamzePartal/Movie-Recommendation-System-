@@ -9,7 +9,7 @@ import java.util.List;
 
 public class MainFrame extends JFrame {
 
-    // ── Renk Paleti (Dark Theme) ─────────────────────────────────────────
+    //Renk Paleti
     static final Color BG_DEEP    = new Color(15,  15,  20);
     static final Color BG_PANEL   = new Color(23,  23,  31);
     static final Color BG_CARD    = new Color(26,  26,  36);
@@ -23,36 +23,34 @@ public class MainFrame extends JFrame {
     static final Color BLUE_DIM   = new Color(30,  40,  54);
     static final Color BLUE_TEXT  = new Color(55,  138, 221);
 
-    // ── Veri ─────────────────────────────────────────────────────────────
+    //veriler
     private List<User>          allUsers;
     private List<User>          targetUsers;
     private Map<Integer, Movie> movies;
     private Recommender         recommender;
     private List<Movie>         randomMovies;
 
-    // ── Ekran 1 bileşenleri ───────────────────────────────────────────────
+    //1. ekran için gereken componentler
     private JComboBox<String> targetCombo;
     private JTextField        xField1, kField1;
     private JLabel            totalLabel1;
     private JPanel            resultPanel1;
 
-    // ── Ekran 2 bileşenleri ───────────────────────────────────────────────
+    //2. ekran için gereken componentler
     private JComboBox<String>[] movieCombos  = new JComboBox[5];
+    private int[]               movieIdOrder;   // combo index → gerçek movieId
     private JTextField[]        ratingFields = new JTextField[5];
     private JTextField          xField2, kField2;
     private JLabel              totalLabel2;
     private JPanel              resultPanel2;
 
-    // ── Navigasyon ────────────────────────────────────────────────────────
+    // navigasyon
     private int       activeTab  = 0;
     private JPanel[]  navItems   = new JPanel[2];   // nav panel referansları
     private JPanel    contentArea;
 
-    // ════════════════════════════════════════════════════════════════════
-    // CONSTRUCTOR
-    // ════════════════════════════════════════════════════════════════════
+    //constuctor
     public MainFrame() {
-        super("CineMatch — Film Öneri Sistemi");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1000, 680);
         setMinimumSize(new Dimension(900, 600));
@@ -64,11 +62,8 @@ public class MainFrame extends JFrame {
         setVisible(true);
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // CSV YOLU: src/CSV/ klasörüne bak (IntelliJ yapısı)
-    // ════════════════════════════════════════════════════════════════════
+    //CSV YOLU: src/CSV/ klasörüne bak (IntelliJ yapısı)
     private String csvPath(String filename) {
-        // Önce proje root'unu dene, sonra src/CSV altını
         String[] candidates = {
                 filename,
                 "src" + File.separator + "CSV" + File.separator + filename,
@@ -77,13 +72,11 @@ public class MainFrame extends JFrame {
         for (String path : candidates) {
             if (new File(path).exists()) return path;
         }
-        // Bulunamazsa src/CSV ile dön (hata mesajı anlamlı olsun)
         return "src" + File.separator + "CSV" + File.separator + filename;
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // VERİ YÜKLEME
-    // ════════════════════════════════════════════════════════════════════
+
+    //verileri yükleme
     private void loadData() {
         allUsers    = CSVReader.readMainData(csvPath("main_data.csv"));
         targetUsers = CSVReader.readTargetUsers(csvPath("target_user.csv"));
@@ -95,9 +88,7 @@ public class MainFrame extends JFrame {
         randomMovies = movieList.subList(0, Math.min(10, movieList.size()));
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // ANA YAPI: Sidebar (sol) + İçerik (sağ)
-    // ════════════════════════════════════════════════════════════════════
+
     private void buildUI() {
         setLayout(new BorderLayout());
         add(buildSidebar(), BorderLayout.WEST);
@@ -109,9 +100,7 @@ public class MainFrame extends JFrame {
         add(contentArea, BorderLayout.CENTER);
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // SIDEBAR
-    // ════════════════════════════════════════════════════════════════════
+  //slide bar
     private JPanel buildSidebar() {
         JPanel sidebar = new JPanel();
         sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
@@ -119,19 +108,7 @@ public class MainFrame extends JFrame {
         sidebar.setPreferredSize(new Dimension(220, 0));
         sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER));
 
-        // Logo satırı
-        JPanel logoRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 18));
-        logoRow.setBackground(BG_PANEL);
-        logoRow.setAlignmentX(LEFT_ALIGNMENT);
-        logoRow.setMaximumSize(new Dimension(220, 64));
-        JLabel logoIcon = new JLabel("🎬");
-        logoIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 20));
-        JLabel logoText = new JLabel("CineMatch");
-        logoText.setFont(new Font("SansSerif", Font.BOLD, 15));
-        logoText.setForeground(TEXT_PRI);
-        logoRow.add(logoIcon);
-        logoRow.add(logoText);
-        sidebar.add(logoRow);
+
 
         // Çizgi
         sidebar.add(makeSep());
@@ -239,9 +216,7 @@ public class MainFrame extends JFrame {
         return sep;
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // EKRAN 1: Hedef Kullanıcıya Göre Öneri
-    // ════════════════════════════════════════════════════════════════════
+    //EKRAN 1: Hedef Kullanıcıya Göre Öneri
     private JPanel buildScreen1() {
         JPanel screen = new JPanel(new BorderLayout());
         screen.setBackground(BG_DEEP);
@@ -266,9 +241,9 @@ public class MainFrame extends JFrame {
         resultPanel1.setBackground(BG_DEEP);
         resultPanel1.add(placeholder("Kullanıcı seçip 'Önerileri Getir' butonuna basın."));
 
-        JScrollPane scroll = makeScroll(resultPanel1);
-        inner.add(scroll);
-        screen.add(inner, BorderLayout.CENTER);
+        // Scroll direkt screen CENTER'ına → tüm kalan yüksekliği kaplar
+        screen.add(inner, BorderLayout.NORTH);
+        screen.add(makeScroll(resultPanel1), BorderLayout.CENTER);
         return screen;
     }
 
@@ -302,17 +277,26 @@ public class MainFrame extends JFrame {
         if (idx < 0 || idx >= targetUsers.size()) return;
         User target = targetUsers.get(idx);
         int X = parseField(xField1), K = parseField(kField1);
-        if (X <= 0 || K <= 0) { showErr("X ve K pozitif tam sayı olmalı!"); return; }
+        // Sınır kontrolleri
+        if (X <= 0 || K <= 0) {
+            showErr("X ve K sıfırdan büyük olmalı!"); return;
+        }
+        int maxX = allUsers.size(); // 600
+        if (X > maxX) {
+            showErr("X en fazla " + maxX + " olabilir\n(veri setinde " + maxX + " kullanıcı var)"); return;
+        }
+        if (K > 500) {
+            showErr("K en fazla 500 olabilir\n(kullanıcı başına ortalama 30-50 film var)"); return;
+        }
         showLoading(resultPanel1);
+        final int fX = X, fK = K;
         new Thread(() -> {
-            List<String> res = recommender.recommend(target, X, K);
-            SwingUtilities.invokeLater(() -> showResults(resultPanel1, res, X, K));
+            List<String> res = recommender.recommend(target, fX, fK);
+            SwingUtilities.invokeLater(() -> showResults(resultPanel1, res, fX, fK));
         }).start();
     }
 
-    // ════════════════════════════════════════════════════════════════════
     // EKRAN 2: Film Puanına Göre Öneri
-    // ════════════════════════════════════════════════════════════════════
     private JPanel buildScreen2() {
         JPanel screen = new JPanel(new BorderLayout());
         screen.setBackground(BG_DEEP);
@@ -339,8 +323,9 @@ public class MainFrame extends JFrame {
         resultPanel2.setBackground(BG_DEEP);
         resultPanel2.add(placeholder("Film seçip puan girdikten sonra 'Önerileri Getir' butonuna basın."));
 
-        inner.add(makeScroll(resultPanel2));
-        screen.add(inner, BorderLayout.CENTER);
+        // Scroll direkt screen CENTER'ına → tüm kalan yüksekliği kaplar
+        screen.add(inner, BorderLayout.NORTH);
+        screen.add(makeScroll(resultPanel2), BorderLayout.CENTER);
         return screen;
     }
 
@@ -378,11 +363,14 @@ public class MainFrame extends JFrame {
         card.add(colHdr);
         card.add(Box.createVerticalStrut(6));
 
-        // Film listesini String dizisi olarak hazirla
+        // Combo item = sadece film adı (ID gizli)
+        // movieIdOrder dizisi: hangi index hangi movieId'ye karşılık gelir
         String[] items = new String[randomMovies.size()];
+        movieIdOrder   = new int[randomMovies.size()];
         for (int j = 0; j < randomMovies.size(); j++) {
-            Movie m = randomMovies.get(j);
-            items[j] = m.movieId + " | " + m.title;
+            Movie m        = randomMovies.get(j);
+            items[j]       = m.title;          // sadece ad
+            movieIdOrder[j]= m.movieId;        // ID ayrıda
         }
 
         for (int i = 0; i < 5; i++) {
@@ -441,17 +429,19 @@ public class MainFrame extends JFrame {
 
     private void runRecommend2() {
         // 5 combo'dan secilen film-puan ciflerini topla
-        // Ayni film birden fazla secilmisse UYAR (hoca 5 farkli film istiyor)
+        // Ayni film birden fazla secilmisse uyar
         Map<Integer, Integer> ratings = new LinkedHashMap<>();
         Set<Integer> seen = new HashSet<>();
         for (int i = 0; i < 5; i++) {
             String sel = (String) movieCombos[i].getSelectedItem();
-            if (sel == null || !sel.contains("|")) {
-                showErr((i + 1) + ". satirda film secili degil!"); return;
+            if (sel == null || sel.trim().isEmpty()) {
+                showErr((i + 1) + ". satırda film seçili değil!"); return;
             }
-            int movieId;
-            try { movieId = Integer.parseInt(sel.split("\\|")[0].trim()); }
-            catch (NumberFormatException ex) { showErr((i+1) + ". satirda film ID hatasi!"); return; }
+            // movieId'yi combo indexinden al (artık item string'inde ID yok)
+            int comboIdx = movieCombos[i].getSelectedIndex();
+            int movieId  = (comboIdx >= 0 && movieIdOrder != null)
+                    ? movieIdOrder[comboIdx] : -1;
+            if (movieId < 0) { showErr((i+1) + ". satırda geçersiz seçim!"); return; }
 
             int r = parseField(ratingFields[i]);
             if (r < 1 || r > 5) {
@@ -464,7 +454,16 @@ public class MainFrame extends JFrame {
             ratings.put(movieId, r);
         }
         int X = parseField(xField2), K = parseField(kField2);
-        if (X <= 0 || K <= 0) { showErr("X ve K pozitif tam sayi olmali!"); return; }
+        if (X <= 0 || K <= 0) {
+            showErr("X ve K sıfırdan büyük olmalı!"); return;
+        }
+        int maxX = allUsers.size(); // 600
+        if (X > maxX) {
+            showErr("X en fazla " + maxX + " olabilir\n(veri setinde " + maxX + " kullanıcı var)"); return;
+        }
+        if (K > 500) {
+            showErr("K en fazla 500 olabilir\n(kullanıcı başına ortalama 30-50 film var)"); return;
+        }
         showLoading(resultPanel2);
         final int fX = X, fK = K;
         final Map<Integer, Integer> finalRatings = new LinkedHashMap<>(ratings);
@@ -474,16 +473,22 @@ public class MainFrame extends JFrame {
         }).start();
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // SONUÇ GÖSTERİMİ
-    // ════════════════════════════════════════════════════════════════════
     private void showResults(JPanel panel, List<String> results, int X, int K) {
         panel.removeAll();
         if (results.isEmpty()) {
             panel.add(placeholder("Öneri bulunamadı. X ve K değerlerini küçültün."));
             panel.revalidate(); panel.repaint(); return;
         }
-        JLabel hdr = lbl("  " + results.size() + " öneri  ·  X=" + X + "  K=" + K, TEXT_SEC, 12);
+        // Toplam öneri kartını gerçek sayıyla güncelle
+        JLabel totalLbl = (panel == resultPanel1) ? totalLabel1 : totalLabel2;
+        totalLbl.setText(String.valueOf(results.size()));
+
+        // Gerçek sonuç sayısını göster (X*K'dan az olabilir — kullanıcının yeterli filmi yoksa)
+        int expected = X * K;
+        String countInfo = results.size() == expected
+                ? results.size() + " öneri"
+                : results.size() + " öneri  (hedef: " + expected + ")";
+        JLabel hdr = lbl("  " + countInfo + "  ·  X=" + X + "  K=" + K, TEXT_SEC, 12);
         hdr.setBorder(new EmptyBorder(10, 0, 8, 0));
         hdr.setAlignmentX(LEFT_ALIGNMENT);
         panel.add(hdr);
@@ -550,9 +555,7 @@ public class MainFrame extends JFrame {
         return row;
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // YARDIMCI BİLEŞENLER
-    // ════════════════════════════════════════════════════════════════════
+    //yardımcı bileşenler
     private JPanel makeTopBar(String title, String sub) {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setBackground(BG_PANEL);
@@ -620,6 +623,12 @@ public class MainFrame extends JFrame {
         s.getViewport().setBackground(BG_DEEP);
         s.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
         s.setAlignmentX(LEFT_ALIGNMENT);
+        // Scroll hızını artır (varsayılan çok yavaş)
+        s.getVerticalScrollBar().setUnitIncrement(16);
+        s.getVerticalScrollBar().setBlockIncrement(80);
+        // Scroll bar her zaman görünsün
+        s.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
+        s.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         return s;
     }
 
@@ -750,9 +759,7 @@ public class MainFrame extends JFrame {
         JOptionPane.showMessageDialog(this, msg, "Hata", JOptionPane.ERROR_MESSAGE);
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // MAIN
-    // ════════════════════════════════════════════════════════════════════
+
     public static void main(String[] args) {
         try { UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName()); }
         catch (Exception ignored) {}

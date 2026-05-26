@@ -1,6 +1,9 @@
+
+// MaxHeap'teki her düğümü temsil eder
+// left/right/parent pointerlarıyla gerçek bir bağlı ağaç düğümü temsil eder
 public class HeapNode {
-    public User user;           // asıl kullanıcı verisi
-    public double similarity;   // cosine similarity skoru (öncelik)
+    public User user;           // kullanıcı verisi
+    public double similarity;   // cosine similarity skoru (buyuk deger = yuksek oncelik)
 
     public HeapNode left;       // sol çocuk
     public HeapNode right;      // sağ çocuk

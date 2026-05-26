@@ -1,13 +1,10 @@
 import java.io.*;
 import java.util.*;
 
+//Uc CSV dosyasini okuyarak Java nesnelerine donusturen yardimci siniftir
 public class CSVReader {
 
-    // ─────────────────────────────────────────
-    // main_data.csv okur → 600 User döner
-    // Format: user_id, movieId1, movieId2, ...
-    // İlk satır header (sütun isimleri = movie ID'leri)
-    // ─────────────────────────────────────────
+    //main_data.csv okur
     public static List<User> readMainData(String filePath) {
         List<User> users = new ArrayList<>();
 
@@ -48,10 +45,8 @@ public class CSVReader {
         return users;
     }
 
-    // ─────────────────────────────────────────
-    // movies.csv okur → movieId → Movie map döner
-    // Format: movieId,title,genres
-    // ─────────────────────────────────────────
+
+    //movies.csv okur,  movieId → Movie map döner
     public static Map<Integer, Movie> readMovies(String filePath) {
         Map<Integer, Movie> movies = new HashMap<>();
 
@@ -94,10 +89,8 @@ public class CSVReader {
         return movies;
     }
 
-    // ─────────────────────────────────────────
-    // target_user.csv okur → 10 hedef kullanıcı
-    // Format: main_data.csv ile aynı
-    // ─────────────────────────────────────────
+
+    //target_user.csv okur → 10 hedef kullanıcı format main_data.csv ile aynı
     public static List<User> readTargetUsers(String filePath) {
         // main_data.csv ile aynı format, aynı metodu kullanabiliriz
         return readMainData(filePath);

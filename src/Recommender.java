@@ -1,10 +1,6 @@
 import java.util.*;
 
-// Öneri motoru:
-// 1. Hedef kullanıcı ile tüm kullanıcılar arasında cosine similarity hesapla
-// 2. MaxHeap'e ekle
-// 3. X kullanıcı çek
-// 4. Her birinden K film al → toplam X*K film adı döner
+// CosineSimilarity, MaxHeap ve film katalogu kullanarak hedef kullaniciya X*K film oneri listesi uretir
 
 public class Recommender {
 
@@ -16,12 +12,7 @@ public class Recommender {
         this.movies = movies;
     }
 
-    // ─────────────────────────────────────────
-    // ANA METOD: öneri listesini döner
-    // targetUser : öneri yapılacak kişi
-    // X          : kaç benzer kullanıcı alınacak
-    // K          : her kullanıcıdan kaç film alınacak
-    // ─────────────────────────────────────────
+
     public List<String> recommend(User targetUser, int X, int K) {
         List<String> recommendations = new ArrayList<>();
 
@@ -54,10 +45,7 @@ public class Recommender {
         return recommendations;
     }
 
-    // ─────────────────────────────────────────
-    // Bir kullanıcının K en yüksek puanlı filmini döner
-    // Hedef kullanıcının izlediklerini atlar
-    // ─────────────────────────────────────────
+    // Bir kullanıcının K en yüksek puanlı filmini döner , hedef kullanıcının izlediklerini atlar
     private List<String> getTopKMovies(User similarUser, User targetUser, int K) {
         // movieId → rating çiftlerini puana göre büyükten küçüğe sırala
         List<Map.Entry<Integer, Integer>> entries = new ArrayList<>(similarUser.ratings.entrySet());
@@ -85,11 +73,7 @@ public class Recommender {
         return result;
     }
 
-    // ─────────────────────────────────────────
-    // EKRAN 2 için: kullanıcının elle girdiği puanlar
-    // bir User nesnesi oluşturup aynı recommend metoduna gönder
-    // movieRatings: movieId → rating (kullanıcının girdiği 5 puan)
-    // ─────────────────────────────────────────
+    // ekran 2 için: kullanıcının elle girdiği puanlar
     public List<String> recommendFromRatings(Map<Integer, Integer> movieRatings, int X, int K) {
         // Sahte bir "hedef kullanıcı" oluştur (ID: -1, ana veride yok)
         User virtualUser = new User(-1);

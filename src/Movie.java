@@ -1,3 +1,6 @@
+//Bir filmi temsil eden model sinifi
+// Yalnizca ID ve baslik bilgisi tutulur
+// genres algoritmada kullanilmadigi icin saklanmaz
 public class Movie {
     public int movieId;
     public String title;

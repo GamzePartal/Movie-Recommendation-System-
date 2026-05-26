@@ -1,13 +1,8 @@
-// Cosine Similarity hesaplama
-// Formül: (A · B) / (|A| × |B|)
-//
-// Verimlilik notu:
-// Her kullanıcı 9018 filmin sadece 30-50'sine puan verdi.
-// Tüm 9018 filmi dolaşmak yerine, nonzero indisleri üzerinden
-// hesaplama yapıyoruz → çok daha hızlı.
-
+//Iki kullanici arasindaki benzerlik skorunu hesaplayan yardimci siniftir
+//Formul:   sim(A, B)  =  (A . B)  /  (|A| x |B|)
 public class CosineSimilarity {
 
+    //2 kullanıcı arasındaki benzerliği hesaplar
     public static double compute(User userA, User userB) {
         if (userA.ratings.isEmpty() || userB.ratings.isEmpty()) {
             return 0.0;

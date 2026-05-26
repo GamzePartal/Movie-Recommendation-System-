@@ -1,11 +1,4 @@
-// NODE TABANLI MAX HEAP
-// Dizi kullanılmıyor! Hoca bunu özellikle istedi.
-// En yüksek similarity her zaman root'ta bulunur.
-//
-// Yeni düğümün nereye ekleneceğini bulmak için
-// size'ın binary gösterimini kullanıyoruz:
-//   size+1 = eklemenin yapılacağı konumun path'i
-//   örnek: size=6 → binary(7)=111 → root→sağ→sağ
+//Root her zaman en yuksek similarity'e sahip kullaniciyi tutar
 
 public class MaxHeap {
 
@@ -25,9 +18,8 @@ public class MaxHeap {
         return size == 0;
     }
 
-    // ─────────────────────────────────────────
-    // INSERT: yeni kullanıcıyı heap'e ekle
-    // ─────────────────────────────────────────
+
+    //yeni kullanıcıyı similarity skoru ile heape ekler
     public void insert(User user, double similarity) {
         HeapNode newNode = new HeapNode(user, similarity);
         size++;
@@ -48,13 +40,12 @@ public class MaxHeap {
         }
         newNode.parent = parent;
 
-        // Heap özelliğini koru: yeni düğümü yukarı taşı
+        // Heap özelliğini koru yeni düğümü yukarı taşı
         siftUp(newNode);
     }
 
-    // ─────────────────────────────────────────
-    // EXTRACT MAX: en benzer kullanıcıyı çıkar
-    // ─────────────────────────────────────────
+
+    //en benzer kullanıcıyı çıkarır
     public HeapNode extractMax() {
         if (root == null) return null;
 
@@ -66,7 +57,7 @@ public class MaxHeap {
             return maxNode;
         }
 
-        // En sondaki düğümü bul, root ile verisini değiştir
+        // En sondaki düğümü bul root ile verisini değiştir
         HeapNode lastNode = findNode(size);
         if (lastNode == null) { size--; return maxNode; } // güvenlik
         swapData(root, lastNode);
@@ -81,30 +72,12 @@ public class MaxHeap {
         return maxNode;
     }
 
-    // ─────────────────────────────────────────
-    // PEEK: sadece root'u gör, çıkarma
-    // ─────────────────────────────────────────
+    //rootu gör
     public HeapNode peek() {
         return root;
     }
 
-    // ─────────────────────────────────────────
-    // YARDIMCI: n numaralı düğümü bul (1-indexed, root=1)
-    //
-    // Tam complete binary tree'de n'inci düğümün yolu:
-    // n'in binary gösterimi MSB'den sonraki bitleri verir:
-    //   0 → sol çocuğa git
-    //   1 → sağ çocuğa git
-    //
-    // Örnek: n=6 → binary="110"
-    //   MSB (1) = root, atla
-    //   bit '1' → sağa git
-    //   bit '0' → sola git   ← bu HEDEF düğüm
-    //
-    // ÖNCEKİ HATA: döngü "binary.length() - 1" ile bitiyordu,
-    // yani son bit atlanıyordu → yanlış (bazen null) düğüm dönüyordu.
-    // DÜZELTME: tüm bitleri (MSB hariç) dolaş.
-    // ─────────────────────────────────────────
+    //Complete binary tree'de n'inci dugumu bulur
     private HeapNode findNode(int n) {
         if (n == 1) return root;
 
@@ -124,9 +97,7 @@ public class MaxHeap {
         return current;
     }
 
-    // ─────────────────────────────────────────
-    // SIFT UP: düğümü ebeveynlerle karşılaştırarak yukarı taşı
-    // ─────────────────────────────────────────
+    //düğümü ebeveynlerle karşılaştırarak yukarı taşı
     private void siftUp(HeapNode node) {
         while (node.parent != null && node.similarity > node.parent.similarity) {
             swapData(node, node.parent);
@@ -134,9 +105,7 @@ public class MaxHeap {
         }
     }
 
-    // ─────────────────────────────────────────
-    // SIFT DOWN: düğümü çocuklarla karşılaştırarak aşağı taşı
-    // ─────────────────────────────────────────
+    //düğümü çocuklarla karşılaştırarak aşağı taşı
     private void siftDown(HeapNode node) {
         while (true) {
             HeapNode largest = node;
@@ -155,9 +124,7 @@ public class MaxHeap {
         }
     }
 
-    // ─────────────────────────────────────────
-    // SWAP: iki düğümün verisini değiştir (pointer'ları değil!)
-    // ─────────────────────────────────────────
+    // iki düğümün verisini değiştir (pointer'ları değil)
     private void swapData(HeapNode a, HeapNode b) {
         User tempUser = a.user;
         double tempSim = a.similarity;
@@ -167,9 +134,7 @@ public class MaxHeap {
         b.similarity = tempSim;
     }
 
-    // ─────────────────────────────────────────
-    // Son düğümü ağaçtan sil (ebeveyninden kopar)
-    // ─────────────────────────────────────────
+    //Son düğümü ağaçtan sil (ebeveyninden kopar)
     private void removeLastNode(HeapNode lastNode) {
         HeapNode parent = lastNode.parent;
         if (parent == null) {
