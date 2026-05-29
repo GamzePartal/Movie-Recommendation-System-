@@ -1,5 +1,6 @@
-//Root her zaman en yuksek similarity'e sahip kullaniciyi tutar
-
+// Pointer tabanlı Max-Heap
+// Kural: her düğüm çocuklarından büyük olmalı → kök her zaman en büyük similarity değerine sahiptir
+// Dizi kullanılmadı, leftChild / rightChild / parent pointer yapısı kullanıldı
 public class MaxHeap {
 
     private HeapNode root;
@@ -18,8 +19,11 @@ public class MaxHeap {
         return size == 0;
     }
 
+    public HeapNode peek() {
+        return root;
+    }
 
-    //yeni kullanıcıyı similarity skoru ile heape ekler
+    // Yeni kullanıcıyı heap'e ekler
     public void insert(User user, double similarity) {
         HeapNode newNode = new HeapNode(user, similarity);
         size++;
@@ -29,27 +33,31 @@ public class MaxHeap {
             return;
         }
 
-        // Eklenecek konumun ebeveynini bul
-        HeapNode parent = findNode(size / 2);
+        // Complete binary tree mantığı:
+        // Yeni node'un parent'ı size / 2 indeksindeki node'dur
+        HeapNode parentNode = findNodeAtIndex(size / 2);
 
-        // Sol mu sağ mı çocuk?
-        if (parent.left == null) {
-            parent.left = newNode;
+        if (parentNode.leftChild == null) {
+            parentNode.leftChild = newNode;
         } else {
-            parent.right = newNode;
+            parentNode.rightChild = newNode;
         }
-        newNode.parent = parent;
 
-        // Heap özelliğini koru yeni düğümü yukarı taşı
+        newNode.parent = parentNode;
+
         siftUp(newNode);
     }
 
-
-    //en benzer kullanıcıyı çıkarır
+    // Heap'teki en büyük similarity değerine sahip kullanıcıyı çıkarır
     public HeapNode extractMax() {
-        if (root == null) return null;
+        if (root == null) {
+            return null;
+        }
 
-        HeapNode maxNode = root;
+        // ÖNEMLİ:
+        // Root referansını değil, root'un verisinin kopyasını saklıyoruz.
+        // Aksi halde root değişince döndürülen maxNode da değişmiş olur.
+        HeapNode maxNode = new HeapNode(root.user, root.similarity);
 
         if (size == 1) {
             root = null;
@@ -57,93 +65,108 @@ public class MaxHeap {
             return maxNode;
         }
 
-        // En sondaki düğümü bul root ile verisini değiştir
-        HeapNode lastNode = findNode(size);
-        if (lastNode == null) { size--; return maxNode; } // güvenlik
-        swapData(root, lastNode);
+        HeapNode lastNode = findNodeAtIndex(size);
 
-        // Son düğümü sil
+        // Son node'un verisini root'a taşı
+        root.user = lastNode.user;
+        root.similarity = lastNode.similarity;
+
+        // Son node'u ağaçtan kopar
         removeLastNode(lastNode);
         size--;
 
-        // Root'u aşağı taşı
+        // Root'a taşınan değer küçük olabilir, aşağı indir
         siftDown(root);
 
         return maxNode;
     }
 
-    //rootu gör
-    public HeapNode peek() {
-        return root;
-    }
+    // Yeni eklenen node parent'ından büyükse yukarı çıkar
+    private void siftUp(HeapNode currentNode) {
+        while (currentNode.parent != null &&
+                currentNode.similarity > currentNode.parent.similarity) {
 
-    //Complete binary tree'de n'inci dugumu bulur
-    private HeapNode findNode(int n) {
-        if (n == 1) return root;
-
-        String binary = Integer.toBinaryString(n);
-        HeapNode current = root;
-
-        // index 1'den başla: MSB (index 0) kökü temsil eder, atla
-        // tüm kalan bitleri dolaş (son bit dahil)
-        for (int i = 1; i < binary.length(); i++) {
-            if (current == null) return null; // güvenlik kontrolü
-            if (binary.charAt(i) == '0') {
-                current = current.left;
-            } else {
-                current = current.right;
-            }
-        }
-        return current;
-    }
-
-    //düğümü ebeveynlerle karşılaştırarak yukarı taşı
-    private void siftUp(HeapNode node) {
-        while (node.parent != null && node.similarity > node.parent.similarity) {
-            swapData(node, node.parent);
-            node = node.parent;
+            swapNodeData(currentNode, currentNode.parent);
+            currentNode = currentNode.parent;
         }
     }
 
-    //düğümü çocuklarla karşılaştırarak aşağı taşı
-    private void siftDown(HeapNode node) {
+    // Root veya ara node çocuklarından küçükse aşağı iner
+    private void siftDown(HeapNode currentNode) {
         while (true) {
-            HeapNode largest = node;
+            HeapNode largest = currentNode;
 
-            if (node.left != null && node.left.similarity > largest.similarity) {
-                largest = node.left;
-            }
-            if (node.right != null && node.right.similarity > largest.similarity) {
-                largest = node.right;
+            if (currentNode.leftChild != null &&
+                    currentNode.leftChild.similarity > largest.similarity) {
+                largest = currentNode.leftChild;
             }
 
-            if (largest == node) break; // heap özelliği sağlandı
+            if (currentNode.rightChild != null &&
+                    currentNode.rightChild.similarity > largest.similarity) {
+                largest = currentNode.rightChild;
+            }
 
-            swapData(node, largest);
-            node = largest;
+            if (largest == currentNode) {
+                break;
+            }
+
+            swapNodeData(currentNode, largest);
+            currentNode = largest;
         }
     }
 
-    // iki düğümün verisini değiştir (pointer'ları değil)
-    private void swapData(HeapNode a, HeapNode b) {
-        User tempUser = a.user;
-        double tempSim = a.similarity;
-        a.user = b.user;
-        a.similarity = b.similarity;
-        b.user = tempUser;
-        b.similarity = tempSim;
+    // Heap'in complete tree index mantığına göre node bulur
+    // index = 1 root
+    // index'in binary karşılığı yol verir:
+    // 0 = sol, 1 = sağ
+    private HeapNode findNodeAtIndex(int index) {
+        if (index == 1) {
+            return root;
+        }
+
+        String binaryPath = Integer.toBinaryString(index);
+        HeapNode currentNode = root;
+
+        // İlk bit root'u temsil eder, o yüzden 1'den başlıyoruz
+        for (int i = 1; i < binaryPath.length(); i++) {
+            if (currentNode == null) {
+                return null;
+            }
+
+            if (binaryPath.charAt(i) == '0') {
+                currentNode = currentNode.leftChild;
+            } else {
+                currentNode = currentNode.rightChild;
+            }
+        }
+
+        return currentNode;
     }
 
-    //Son düğümü ağaçtan sil (ebeveyninden kopar)
+    // Sadece node verilerini değiştirir, pointer bağlantılarına dokunmaz
+    private void swapNodeData(HeapNode firstNode, HeapNode secondNode) {
+        User tempUser = firstNode.user;
+        double tempSimilarity = firstNode.similarity;
+
+        firstNode.user = secondNode.user;
+        firstNode.similarity = secondNode.similarity;
+
+        secondNode.user = tempUser;
+        secondNode.similarity = tempSimilarity;
+    }
+
+    // Son node'u parent'ından koparır
     private void removeLastNode(HeapNode lastNode) {
-        HeapNode parent = lastNode.parent;
-        if (parent == null) {
+        HeapNode parentNode = lastNode.parent;
+
+        if (parentNode == null) {
             root = null;
-        } else if (parent.right == lastNode) {
-            parent.right = null;
+        } else if (parentNode.rightChild == lastNode) {
+            parentNode.rightChild = null;
         } else {
-            parent.left = null;
+            parentNode.leftChild = null;
         }
+
         lastNode.parent = null;
     }
 }

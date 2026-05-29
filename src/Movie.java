@@ -1,17 +1,15 @@
-//Bir filmi temsil eden model sinifi
-// Yalnizca ID ve baslik bilgisi tutulur
-// genres algoritmada kullanilmadigi icin saklanmaz
+// Bir filmi temsil eder
+// Sadece ID ve başlık tutulur — genres algoritma için gerekli değil
 public class Movie {
-    public int movieId;
+
+    public int    movieId;
     public String title;
 
     public Movie(int movieId, String title) {
         this.movieId = movieId;
-        this.title = title;
+        this.title   = title;
     }
 
     @Override
-    public String toString() {
-        return title;
-    }
+    public String toString() { return title; }
 }

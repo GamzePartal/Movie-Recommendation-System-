@@ -1,98 +1,100 @@
 import java.io.*;
 import java.util.*;
 
-//Uc CSV dosyasini okuyarak Java nesnelerine donusturen yardimci siniftir
+// Üç CSV dosyasını okuyup Java nesnelerine dönüştürür
 public class CSVReader {
 
-    //main_data.csv okur
+    // main_data.csv → kullanıcı listesi
+    // İlk satır başlık: "user_id,1,2,3,..." şeklinde film ID'leri
     public static List<User> readMainData(String filePath) {
-        List<User> users = new ArrayList<>();
+        List<User> userList = new ArrayList<>();
 
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            String headerLine = br.readLine(); // ilk satır: "user_id,1,2,3,..."
-            if (headerLine == null) return users;
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
 
-            String[] headers = headerLine.split(",");
-            // headers[0] = "user_id", headers[1] = "1", headers[2] = "2", ...
+            String headerLine = reader.readLine();
+            if (headerLine == null) return userList;
+            headerLine = headerLine.trim(); // \r\n koruması
 
-            // Movie ID'lerini integer'a çevir (index → movieId)
-            int[] movieIds = new int[headers.length];
-            for (int i = 1; i < headers.length; i++) {
-                movieIds[i] = Integer.parseInt(headers[i].trim());
+            String[] columns  = headerLine.split(",");
+            int[]    movieIds = new int[columns.length];
+
+            // Başlık satırından film ID'lerini çıkar (index → movieId)
+            for (int columnIndex = 1; columnIndex < columns.length; columnIndex++) {
+                movieIds[columnIndex] = Integer.parseInt(columns[columnIndex].trim());
             }
 
             String line;
-            while ((line = br.readLine()) != null) {
-                if (line.trim().isEmpty()) continue;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim(); // \r\n koruması
+                if (line.isEmpty()) continue;
 
-                String[] parts = line.split(",");
-                int userId = Integer.parseInt(parts[0].trim());
-                User user = new User(userId);
+                String[] values = line.split(",");
+                int      userId = Integer.parseInt(values[0].trim());
+                User     user   = new User(userId);
 
-                for (int i = 1; i < parts.length && i < headers.length; i++) {
-                    int rating = Integer.parseInt(parts[i].trim());
+                for (int columnIndex = 1; columnIndex < values.length && columnIndex < columns.length; columnIndex++) {
+                    int rating = Integer.parseInt(values[columnIndex].trim());
+                    // Sadece sıfırdan büyük puanları kaydet
                     if (rating > 0) {
-                        user.addRating(movieIds[i], rating);
+                        user.addRating(movieIds[columnIndex], rating);
                     }
                 }
-                users.add(user);
+                userList.add(user);
             }
 
-        } catch (IOException e) {
-            System.err.println("main_data.csv okunamadı: " + e.getMessage());
+        } catch (IOException exception) {
+            System.err.println("main_data.csv okunamadı: " + exception.getMessage());
         }
 
-        return users;
+        return userList;
     }
 
-
-    //movies.csv okur,  movieId → Movie map döner
+    // movies.csv → movieId → Movie map
+    // Dikkat: bazı başlıklar tırnak içinde virgül içerebilir ("Toy Story, The")
     public static Map<Integer, Movie> readMovies(String filePath) {
-        Map<Integer, Movie> movies = new HashMap<>();
+        Map<Integer, Movie> movieMap = new HashMap<>();
 
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            br.readLine(); // header satırını atla
+        try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
+            reader.readLine(); // başlık satırını atla
 
             String line;
-            while ((line = br.readLine()) != null) {
-                if (line.trim().isEmpty()) continue;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim(); // \r\n koruması
+                if (line.isEmpty()) continue;
 
-                // Title içinde virgül olabilir (örn: "Grumpier Old Men, The")
-                // Bu yüzden sadece ilk virgüle göre böl, rest = title,genres
-                int firstComma = line.indexOf(',');
-                if (firstComma == -1) continue;
+                int firstCommaIndex = line.indexOf(',');
+                if (firstCommaIndex == -1) continue;
 
-                String idStr = line.substring(0, firstComma).trim();
-                String rest = line.substring(firstComma + 1);
+                String idPart   = line.substring(0, firstCommaIndex).trim();
+                String restPart = line.substring(firstCommaIndex + 1);
 
-                // Genres'i at, sadece title lazım
-                // Title tırnak içinde olabilir ya da olmayabilir
-                String title;
-                if (rest.startsWith("\"")) {
-                    // Tırnaklı title: "Toy Story, The (1995)",Adventure|...
-                    int endQuote = rest.indexOf("\"", 1);
-                    title = rest.substring(1, endQuote);
+                // Tırnaklı başlık: "Toy Story, The (1995)",Adventure|...
+                String movieTitle;
+                if (restPart.startsWith("\"")) {
+                    int closingQuoteIndex = restPart.indexOf("\"", 1);
+                    if (closingQuoteIndex == -1) continue; // bozuk satır, atla
+                    movieTitle = restPart.substring(1, closingQuoteIndex);
                 } else {
                     // Tırnaksız: Toy Story (1995),Adventure|...
-                    int lastComma = rest.lastIndexOf(',');
-                    title = (lastComma != -1) ? rest.substring(0, lastComma).trim() : rest.trim();
+                    int lastCommaIndex = restPart.lastIndexOf(',');
+                    movieTitle = (lastCommaIndex != -1)
+                            ? restPart.substring(0, lastCommaIndex).trim()
+                            : restPart.trim();
                 }
 
-                int movieId = Integer.parseInt(idStr);
-                movies.put(movieId, new Movie(movieId, title));
+                int movieId = Integer.parseInt(idPart);
+                movieMap.put(movieId, new Movie(movieId, movieTitle));
             }
 
-        } catch (IOException e) {
-            System.err.println("movies.csv okunamadı: " + e.getMessage());
+        } catch (IOException exception) {
+            System.err.println("movies.csv okunamadı: " + exception.getMessage());
         }
 
-        return movies;
+        return movieMap;
     }
 
-
-    //target_user.csv okur → 10 hedef kullanıcı format main_data.csv ile aynı
+    // target_user.csv → hedef kullanıcılar (main_data ile aynı format)
     public static List<User> readTargetUsers(String filePath) {
-        // main_data.csv ile aynı format, aynı metodu kullanabiliriz
         return readMainData(filePath);
     }
 }

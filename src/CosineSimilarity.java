@@ -1,36 +1,37 @@
-//Iki kullanici arasindaki benzerlik skorunu hesaplayan yardimci siniftir
-//Formul:   sim(A, B)  =  (A . B)  /  (|A| x |B|)
+// İki kullanıcı arasındaki benzerliği hesaplar
+// Formül: sim(A,B) = (A·B) / (|A| × |B|)
+// Sonuç 0.0 (hiç benzer değil) ile 1.0 (aynı zevk) arasındadır
 public class CosineSimilarity {
 
-    //2 kullanıcı arasındaki benzerliği hesaplar
-    public static double compute(User userA, User userB) {
-        if (userA.ratings.isEmpty() || userB.ratings.isEmpty()) {
-            return 0.0;
+    public static double compute(User firstUser, User secondUser) {
+
+        // Her iki kullanıcı da en az bir film puanlamış olmalı
+        if (firstUser.ratings.isEmpty() || secondUser.ratings.isEmpty()) return 0.0;
+
+        double dotProduct      = 0.0; // A · B
+        double magnitudeFirst  = 0.0; // |A|²
+        double magnitudeSecond = 0.0; // |B|²
+
+        // |A|² → firstUser'ın TÜM puanları üzerinden (sadece ortak filmler değil)
+        for (double rating : firstUser.ratings.values()) {
+            magnitudeFirst += rating * rating;
         }
 
-        double dotProduct = 0.0;
-        double magA = 0.0;
-        double magB = 0.0;
-
-        // A'nın puanladığı filmler üzerinden dot product ve |A| hesapla
-        for (int movieId : userA.ratings.keySet()) {
-            double ratingA = userA.ratings.get(movieId);
-            double ratingB = userB.getRating(movieId); // 0 dönebilir
-
-            dotProduct += ratingA * ratingB;
-            magA += ratingA * ratingA;
+        // |B|² → secondUser'ın TÜM puanları üzerinden
+        for (double rating : secondUser.ratings.values()) {
+            magnitudeSecond += rating * rating;
         }
 
-        // |B| hesapla (B'nin kendi nonzero'ları üzerinden)
-        for (int rating : userB.ratings.values()) {
-            magB += (double) rating * rating;
+        // Dot product → her iki kullanıcının da puanladığı filmler üzerinden
+        for (int movieId : firstUser.ratings.keySet()) {
+            double ratingFromFirst  = firstUser.ratings.get(movieId);
+            double ratingFromSecond = secondUser.getRating(movieId); // izlemediyse 0 döner
+            dotProduct += ratingFromFirst * ratingFromSecond;
         }
 
-        // Sıfır bölme koruması
-        if (magA == 0.0 || magB == 0.0) {
-            return 0.0;
-        }
+        // Sıfıra bölme koruması
+        if (magnitudeFirst == 0.0 || magnitudeSecond == 0.0) return 0.0;
 
-        return dotProduct / (Math.sqrt(magA) * Math.sqrt(magB));
+        return dotProduct / (Math.sqrt(magnitudeFirst) * Math.sqrt(magnitudeSecond));
     }
 }
