@@ -1,5 +1,5 @@
 // Bir filmi temsil eder
-// Sadece ID ve başlık tutulur — genres algoritma için gerekli değil
+// Sadece ID ve başlık tutulur genres algoritma için gerekli değil
 public class Movie {
 
     public int    movieId;

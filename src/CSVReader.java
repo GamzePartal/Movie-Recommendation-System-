@@ -5,7 +5,6 @@ import java.util.*;
 public class CSVReader {
 
     // main_data.csv → kullanıcı listesi
-    // İlk satır başlık: "user_id,1,2,3,..." şeklinde film ID'leri
     public static List<User> readMainData(String filePath) {
         List<User> userList = new ArrayList<>();
 
@@ -34,7 +33,7 @@ public class CSVReader {
 
                 for (int columnIndex = 1; columnIndex < values.length && columnIndex < columns.length; columnIndex++) {
                     int rating = Integer.parseInt(values[columnIndex].trim());
-                    // Sadece sıfırdan büyük puanları kaydet
+                    // Sadece sıfırdan büyük puanları kaydeder
                     if (rating > 0) {
                         user.addRating(movieIds[columnIndex], rating);
                     }
@@ -45,12 +44,11 @@ public class CSVReader {
         } catch (IOException exception) {
             System.err.println("main_data.csv okunamadı: " + exception.getMessage());
         }
-
         return userList;
     }
 
-    // movies.csv → movieId → Movie map
-    // Dikkat: bazı başlıklar tırnak içinde virgül içerebilir ("Toy Story, The")
+
+    //movieId → Movie nesnesi
     public static Map<Integer, Movie> readMovies(String filePath) {
         Map<Integer, Movie> movieMap = new HashMap<>();
 
@@ -93,7 +91,7 @@ public class CSVReader {
         return movieMap;
     }
 
-    // target_user.csv → hedef kullanıcılar (main_data ile aynı format)
+    // target_user.csv → hedef kullanıcılar main data ile aynı mantık
     public static List<User> readTargetUsers(String filePath) {
         return readMainData(filePath);
     }

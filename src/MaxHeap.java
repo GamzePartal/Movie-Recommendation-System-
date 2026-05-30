@@ -1,6 +1,6 @@
-// Pointer tabanlı Max-Heap
-// Kural: her düğüm çocuklarından büyük olmalı → kök her zaman en büyük similarity değerine sahiptir
-// Dizi kullanılmadı, leftChild / rightChild / parent pointer yapısı kullanıldı
+//en büyük değeri her zaman rootta tutan MaxHeap yapısını kurar
+//1. En benzer kullanıcıyı bulmak
+//2. En yüksek puanlı filmi bulmak
 public class MaxHeap {
 
     private HeapNode root;
@@ -23,7 +23,7 @@ public class MaxHeap {
         return root;
     }
 
-    // Yeni kullanıcıyı heap'e ekler
+    //kullanıcıyı heape ekle
     public void insert(User user, double similarity) {
         HeapNode newNode = new HeapNode(user, similarity);
         size++;
@@ -33,8 +33,6 @@ public class MaxHeap {
             return;
         }
 
-        // Complete binary tree mantığı:
-        // Yeni node'un parent'ı size / 2 indeksindeki node'dur
         HeapNode parentNode = findNodeAtIndex(size / 2);
 
         if (parentNode.leftChild == null) {
@@ -44,20 +42,36 @@ public class MaxHeap {
         }
 
         newNode.parent = parentNode;
-
         siftUp(newNode);
     }
 
-    // Heap'teki en büyük similarity değerine sahip kullanıcıyı çıkarır
-    public HeapNode extractMax() {
+    public void insertMovie(Movie movie, double rating) {
+        HeapNode newNode = new HeapNode(movie, rating);
+        size++;
+
         if (root == null) {
-            return null;
+            root = newNode;
+            return;
         }
 
-        // ÖNEMLİ:
-        // Root referansını değil, root'un verisinin kopyasını saklıyoruz.
-        // Aksi halde root değişince döndürülen maxNode da değişmiş olur.
+        HeapNode parentNode = findNodeAtIndex(size / 2);
+
+        if (parentNode.leftChild == null) {
+            parentNode.leftChild = newNode;
+        } else {
+            parentNode.rightChild = newNode;
+        }
+
+        newNode.parent = parentNode;
+        siftUp(newNode);
+    }
+
+    //root döndürürüz ama root değişeceği için bilgileri kopyala
+    public HeapNode extractMax() {
+        if (root == null) return null;
+
         HeapNode maxNode = new HeapNode(root.user, root.similarity);
+        maxNode.movie = root.movie;
 
         if (size == 1) {
             root = null;
@@ -67,21 +81,19 @@ public class MaxHeap {
 
         HeapNode lastNode = findNodeAtIndex(size);
 
-        // Son node'un verisini root'a taşı
-        root.user = lastNode.user;
+        root.user       = lastNode.user;
+        root.movie      = lastNode.movie;
         root.similarity = lastNode.similarity;
 
-        // Son node'u ağaçtan kopar
         removeLastNode(lastNode);
         size--;
 
-        // Root'a taşınan değer küçük olabilir, aşağı indir
         siftDown(root);
 
         return maxNode;
     }
 
-    // Yeni eklenen node parent'ından büyükse yukarı çıkar
+    //Yeni eklenen node parentten büyükse yukarı çıkar
     private void siftUp(HeapNode currentNode) {
         while (currentNode.parent != null &&
                 currentNode.similarity > currentNode.parent.similarity) {
@@ -91,7 +103,6 @@ public class MaxHeap {
         }
     }
 
-    // Root veya ara node çocuklarından küçükse aşağı iner
     private void siftDown(HeapNode currentNode) {
         while (true) {
             HeapNode largest = currentNode;
@@ -106,32 +117,22 @@ public class MaxHeap {
                 largest = currentNode.rightChild;
             }
 
-            if (largest == currentNode) {
-                break;
-            }
+            if (largest == currentNode) break;
 
             swapNodeData(currentNode, largest);
             currentNode = largest;
         }
     }
 
-    // Heap'in complete tree index mantığına göre node bulur
-    // index = 1 root
-    // index'in binary karşılığı yol verir:
-    // 0 = sol, 1 = sağ
+    //belirli indexteki node u bulur array kullanmıyoruz binary yol kullanıyoruz 0 sola git 1 sağa git
     private HeapNode findNodeAtIndex(int index) {
-        if (index == 1) {
-            return root;
-        }
+        if (index == 1) return root;
 
         String binaryPath = Integer.toBinaryString(index);
         HeapNode currentNode = root;
 
-        // İlk bit root'u temsil eder, o yüzden 1'den başlıyoruz
         for (int i = 1; i < binaryPath.length(); i++) {
-            if (currentNode == null) {
-                return null;
-            }
+            if (currentNode == null) return null;
 
             if (binaryPath.charAt(i) == '0') {
                 currentNode = currentNode.leftChild;
@@ -143,19 +144,22 @@ public class MaxHeap {
         return currentNode;
     }
 
-    // Sadece node verilerini değiştirir, pointer bağlantılarına dokunmaz
+    //iki node un bağlantılarını değil sadece içindeki verileri değiştirir
     private void swapNodeData(HeapNode firstNode, HeapNode secondNode) {
-        User tempUser = firstNode.user;
+        User   tempUser       = firstNode.user;
+        Movie  tempMovie      = firstNode.movie;
         double tempSimilarity = firstNode.similarity;
 
-        firstNode.user = secondNode.user;
+        firstNode.user       = secondNode.user;
+        firstNode.movie      = secondNode.movie;
         firstNode.similarity = secondNode.similarity;
 
-        secondNode.user = tempUser;
+        secondNode.user       = tempUser;
+        secondNode.movie      = tempMovie;
         secondNode.similarity = tempSimilarity;
     }
 
-    // Son node'u parent'ından koparır
+    //Son node u parentından koparır
     private void removeLastNode(HeapNode lastNode) {
         HeapNode parentNode = lastNode.parent;
 

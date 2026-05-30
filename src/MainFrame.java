@@ -2,24 +2,13 @@ import javax.swing.*;
 import javax.swing.border.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.geom.*;
 import java.io.File;
 import java.util.*;
 import java.util.List;
 
-/*
- * -------------------------------------------------------
- *  MainFrame — Sinema temalı karanlık GUI
- * -------------------------------------------------------
- *  Ekran 1: Hedef kullanıcı seç → K benzer kullanıcı → X film → X×K öneri
- *  Ekran 2: 5 film puanla → K benzer kullanıcı → X film → X×K öneri
- *
- *  K = heap'ten çekilecek BENZER KULLANICI sayısı
- *  X = her kullanıcıdan alınacak FİLM sayısı
- */
 public class MainFrame extends JFrame {
 
-    // ── Renk paleti ──────────────────────────────────────
+    // ── Renkler ──────────────────────────────────────────
     static final Color BG         = new Color(12, 12, 18);
     static final Color SURFACE    = new Color(20, 20, 30);
     static final Color CARD       = new Color(26, 26, 40);
@@ -32,315 +21,174 @@ public class MainFrame extends JFrame {
     static final Color TEXT_MUTED = new Color(65, 65, 90);
     static final Color RED_SOFT   = new Color(200, 80, 80);
 
+    // ── Fontlar ───────────────────────────────────────────
+    static final Font FONT_BOLD_22  = new Font("SansSerif", Font.BOLD, 22);
+    static final Font FONT_BOLD_13  = new Font("SansSerif", Font.BOLD, 13);
+    static final Font FONT_BOLD_12  = new Font("SansSerif", Font.BOLD, 12);
+    static final Font FONT_BOLD_11  = new Font("SansSerif", Font.BOLD, 11);
+    static final Font FONT_PLAIN_13 = new Font("SansSerif", Font.PLAIN, 13);
+    static final Font FONT_PLAIN_12 = new Font("SansSerif", Font.PLAIN, 12);
+    static final Font FONT_PLAIN_11 = new Font("SansSerif", Font.PLAIN, 11);
+    static final Font FONT_PLAIN_10 = new Font("SansSerif", Font.PLAIN, 10);
+
     // ── Veri ─────────────────────────────────────────────
-    private List<User> allUsers;
-    private List<User> targetUsers;
+    private List<User>          allUsers;
+    private List<User>          targetUsers;
     private Map<Integer, Movie> movies;
-    private Recommender recommender;
-    private List<Movie> randomMovies;
+    private Recommender         recommender;
+    private List<Movie>         randomMovies;
 
-    // ── Ekran 1 bileşenleri ───────────────────────────────
-    private JComboBox<String> targetCombo;
-    private JTextField kField1;
-    private JTextField xField1;
-    private JPanel resultPanel1;
+    // ── Ekran bileşenleri ─────────────────────────────────
+    private JComboBox<String>   targetCombo;
+    private JTextField          kField1, xField1;
+    private JPanel              resultPanel1;
 
-    // ── Ekran 2 bileşenleri ───────────────────────────────
-    @SuppressWarnings("unchecked")
-    private JComboBox<String>[] movieCombos = new JComboBox[5];
+    private JComboBox<String>[] movieCombos  = new JComboBox[5];
+    private JTextField[]        ratingFields = new JTextField[5];
+    private int[]               movieIdMap;
+    private JTextField          kField2, xField2;
+    private JPanel              resultPanel2;
 
-    private JTextField[] ratingFields = new JTextField[5];
-    private int[] movieIdMap;
+    private JPanel   contentArea;
+    private JButton[] navBtns   = new JButton[2];
+    private int       activeTab = 0;
 
-    private JTextField kField2;
-    private JTextField xField2;
-    private JPanel resultPanel2;
-
-    // ── Navigasyon ────────────────────────────────────────
-    private JPanel contentArea;
-    private JButton[] navBtns = new JButton[2];
-    private int activeTab = 0;
-
+    // ─────────────────────────────────────────────────────
     public MainFrame() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1050, 700);
         setMinimumSize(new Dimension(900, 580));
         setLocationRelativeTo(null);
-        setTitle("CineMatch — Film Öneri Sistemi");
         getContentPane().setBackground(BG);
-
         loadData();
         buildUI();
-
         setVisible(true);
     }
 
-    // CSV dosya yolunu bulur
+    // ── CSV yolu ──────────────────────────────────────────
     private String csvPath(String name) {
         for (String path : new String[]{
                 name,
                 "src" + File.separator + "CSV" + File.separator + name,
                 "CSV" + File.separator + name
         }) {
-            if (new File(path).exists()) {
-                return path;
-            }
+            if (new File(path).exists()) return path;
         }
-
         return "src" + File.separator + "CSV" + File.separator + name;
     }
 
+    // ── Veri yükleme ──────────────────────────────────────
     private void loadData() {
         allUsers    = CSVReader.readMainData(csvPath("main_data.csv"));
         targetUsers = CSVReader.readTargetUsers(csvPath("target_user.csv"));
         movies      = CSVReader.readMovies(csvPath("movies.csv"));
         recommender = new Recommender(allUsers, movies);
 
-        // Ekran 2 için movies.csv içinden rastgele 10 film seçilir.
-        // Proje dokümanında combo box'ın tüm filmleri değil,
-        // rastgele seçilmiş 10 filmi göstermesi isteniyor.
+        Set<Integer> validMovieIds = new HashSet<>();
+        for (User u : allUsers) {
+            validMovieIds.addAll(u.ratings.keySet());
+        }
+
         randomMovies = new ArrayList<>();
-
-        List<Movie> allMovieList = new ArrayList<>(movies.values());
-        Collections.shuffle(allMovieList);
-
-        for (Movie movie : allMovieList) {
-            randomMovies.add(movie);
-
-            if (randomMovies.size() == 10) {
-                break;
+        List<Movie> filteredMovies = new ArrayList<>();
+        for (int id : validMovieIds) {
+            if (movies.containsKey(id)) {
+                filteredMovies.add(movies.get(id));
             }
+        }
+        Collections.shuffle(filteredMovies);
+        for (Movie m : filteredMovies) {
+            randomMovies.add(m);
+            if (randomMovies.size() == 10) break;
         }
     }
 
     // ── Ana layout ────────────────────────────────────────
     private void buildUI() {
         setLayout(new BorderLayout());
-
         add(buildSidebar(), BorderLayout.WEST);
 
         contentArea = new JPanel(new CardLayout());
         contentArea.setBackground(BG);
-
         contentArea.add(buildScreen1(), "s1");
         contentArea.add(buildScreen2(), "s2");
-
         add(contentArea, BorderLayout.CENTER);
     }
 
-    // ── Sol sidebar ───────────────────────────────────────
+    // ── Sidebar ───────────────────────────────────────────
     private JPanel buildSidebar() {
-        JPanel sidebar = new JPanel();
-        sidebar.setLayout(new BoxLayout(sidebar, BoxLayout.Y_AXIS));
-        sidebar.setBackground(SURFACE);
-        sidebar.setPreferredSize(new Dimension(210, 0));
-        sidebar.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER));
+        JPanel sb = new JPanel();
+        sb.setLayout(new BoxLayout(sb, BoxLayout.Y_AXIS));
+        sb.setBackground(SURFACE);
+        sb.setPreferredSize(new Dimension(210, 0));
+        sb.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, BORDER));
 
-        sidebar.add(Box.createVerticalStrut(24));
-        sidebar.add(logoLabel());
-        sidebar.add(Box.createVerticalStrut(6));
-        sidebar.add(subLabel("Film Öneri Sistemi"));
-        sidebar.add(Box.createVerticalStrut(28));
-        sidebar.add(divider());
-        sidebar.add(Box.createVerticalStrut(12));
+        sb.add(Box.createVerticalStrut(52));
+        sb.add(divider());
+        sb.add(Box.createVerticalStrut(12));
 
         String[] labels = {"Kullanıcıya Göre", "Filme Göre"};
         String[] icons  = {"◉", "★"};
-
         for (int i = 0; i < 2; i++) {
-            final int index = i;
-
-            navBtns[i] = buildNavBtn(icons[i], labels[i]);
-            navBtns[i].addActionListener(e -> switchTab(index));
-
-            sidebar.add(navBtns[i]);
-            sidebar.add(Box.createVerticalStrut(4));
+            final int idx = i;
+            navBtns[i] = navButton(icons[i] + "  " + labels[i], i);
+            navBtns[i].addActionListener(e -> switchTab(idx));
+            sb.add(navBtns[i]);
+            sb.add(Box.createVerticalStrut(4));
         }
 
-        sidebar.add(Box.createVerticalStrut(24));
-        sidebar.add(divider());
-        sidebar.add(Box.createVerticalStrut(16));
-
-        sidebar.add(statRow("Kullanıcı", String.valueOf(allUsers.size())));
-        sidebar.add(Box.createVerticalStrut(6));
-        sidebar.add(statRow("Film", String.valueOf(movies.size())));
-        sidebar.add(Box.createVerticalStrut(6));
-        sidebar.add(statRow("Hedef", String.valueOf(targetUsers.size())));
-
-        sidebar.add(Box.createVerticalGlue());
-        sidebar.add(footerLabel());
-        sidebar.add(Box.createVerticalStrut(12));
-
-        return sidebar;
+        sb.add(Box.createVerticalStrut(24));
+        sb.add(divider());
+        sb.add(Box.createVerticalStrut(16));
+        sb.add(statRow("Kullanıcı", String.valueOf(allUsers.size())));
+        sb.add(Box.createVerticalStrut(6));
+        sb.add(statRow("Film",      String.valueOf(movies.size())));
+        sb.add(Box.createVerticalStrut(6));
+        sb.add(statRow("Hedef",     String.valueOf(targetUsers.size())));
+        sb.add(Box.createVerticalGlue());
+        sb.add(styledLabel("  Collaborative Filtering", FONT_PLAIN_10, TEXT_MUTED));
+        sb.add(Box.createVerticalStrut(12));
+        return sb;
     }
 
-    private JLabel logoLabel() {
-        JLabel label = new JLabel("  🎬 CineMatch");
-        label.setFont(new Font("Serif", Font.BOLD, 20));
-        label.setForeground(GOLD);
-        label.setAlignmentX(LEFT_ALIGNMENT);
-
-        return label;
-    }
-
-    private JLabel subLabel(String text) {
-        JLabel label = new JLabel("  " + text);
-        label.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        label.setForeground(TEXT_MUTED);
-        label.setAlignmentX(LEFT_ALIGNMENT);
-
-        return label;
-    }
-
-    private JButton buildNavBtn(String icon, String label) {
-        JButton button = new JButton(icon + "  " + label) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                boolean selected;
-
-                if (label.equals("Kullanıcıya Göre")) {
-                    selected = activeTab == 0;
-                } else {
-                    selected = activeTab == 1;
-                }
-
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(
-                        RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON
-                );
-
-                if (selected) {
-                    g2.setColor(GOLD_DIM);
-                } else if (getModel().isRollover()) {
-                    g2.setColor(CARD);
-                } else {
-                    g2.setColor(SURFACE);
-                }
-
-                g2.fillRoundRect(8, 2, getWidth() - 16, getHeight() - 4, 8, 8);
-
-                if (selected) {
-                    g2.setColor(GOLD);
-                    g2.fillRoundRect(8, 2, 3, getHeight() - 4, 3, 3);
-                }
-
-                if (selected) {
-                    g2.setColor(GOLD);
-                } else if (getModel().isRollover()) {
-                    g2.setColor(TEXT);
-                } else {
-                    g2.setColor(TEXT_DIM);
-                }
-
-                g2.setFont(getFont());
-                FontMetrics fm = g2.getFontMetrics();
-
-                g2.drawString(
-                        getText(),
-                        20,
-                        (getHeight() + fm.getAscent() - fm.getDescent()) / 2
-                );
-
-                g2.dispose();
-            }
-        };
-
-        button.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        button.setMaximumSize(new Dimension(210, 40));
-        button.setAlignmentX(LEFT_ALIGNMENT);
-        button.setBorderPainted(false);
-        button.setContentAreaFilled(false);
-        button.setFocusPainted(false);
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        return button;
-    }
-
-    private JPanel statRow(String label, String value) {
-        JPanel row = new JPanel(new BorderLayout());
-        row.setBackground(SURFACE);
-        row.setMaximumSize(new Dimension(210, 26));
-        row.setAlignmentX(LEFT_ALIGNMENT);
-        row.setBorder(new EmptyBorder(0, 18, 0, 14));
-
-        JLabel keyLabel = new JLabel(label);
-        keyLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        keyLabel.setForeground(TEXT_DIM);
-
-        JLabel valueLabel = new JLabel(value);
-        valueLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
-        valueLabel.setForeground(GOLD);
-
-        row.add(keyLabel, BorderLayout.WEST);
-        row.add(valueLabel, BorderLayout.EAST);
-
-        return row;
-    }
-
-    private JLabel footerLabel() {
-        JLabel label = new JLabel("  Collaborative Filtering");
-        label.setFont(new Font("SansSerif", Font.PLAIN, 10));
-        label.setForeground(TEXT_MUTED);
-        label.setAlignmentX(LEFT_ALIGNMENT);
-
-        return label;
-    }
-
-    private JSeparator divider() {
-        JSeparator separator = new JSeparator();
-        separator.setForeground(BORDER);
-        separator.setMaximumSize(new Dimension(210, 1));
-        separator.setAlignmentX(LEFT_ALIGNMENT);
-
-        return separator;
+    // Sidebar nav butonu — paintComponent yok, UIManager ile renklendirildi
+    private JButton navButton(String text, int tabIndex) {
+        JButton btn = new JButton(text);
+        btn.setFont(FONT_PLAIN_13);
+        btn.setMaximumSize(new Dimension(210, 40));
+        btn.setAlignmentX(LEFT_ALIGNMENT);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBackground(activeTab == tabIndex ? GOLD_DIM : SURFACE);
+        btn.setForeground(activeTab == tabIndex ? GOLD : TEXT_DIM);
+        btn.setOpaque(true);
+        btn.setBorderPainted(false);
+        return btn;
     }
 
     private void switchTab(int index) {
         activeTab = index;
-
-        for (JButton button : navBtns) {
-            button.repaint();
+        for (int i = 0; i < navBtns.length; i++) {
+            navBtns[i].setBackground(activeTab == i ? GOLD_DIM : SURFACE);
+            navBtns[i].setForeground(activeTab == i ? GOLD    : TEXT_DIM);
         }
-
-        CardLayout cardLayout = (CardLayout) contentArea.getLayout();
-
-        if (index == 0) {
-            cardLayout.show(contentArea, "s1");
-        } else {
-            cardLayout.show(contentArea, "s2");
-        }
+        ((CardLayout) contentArea.getLayout()).show(contentArea, index == 0 ? "s1" : "s2");
     }
 
-    // ─────────────────────────────────────────────────────
-    //  EKRAN 1: Hedef Kullanıcıya Göre Öneri
-    //
-    //  K = heap'ten kaç benzer kullanıcı çekileceği
-    //  X = her kullanıcıdan kaç film alınacağı
-    // ─────────────────────────────────────────────────────
+    // ── Ekran 1 ───────────────────────────────────────────
     private JPanel buildScreen1() {
         JPanel screen = new JPanel(new BorderLayout());
         screen.setBackground(BG);
-
-        screen.add(
-                topBar(
-                        "Kullanıcıya Göre Öneri",
-                        "Hedef kullanıcı seç  →  K benzer kullanıcı (heap)  →  X film  →  X×K öneri"
-                ),
-                BorderLayout.NORTH
-        );
-
-        JPanel inner = new JPanel();
-        inner.setLayout(new BoxLayout(inner, BoxLayout.Y_AXIS));
-        inner.setBackground(BG);
-        inner.setBorder(new EmptyBorder(20, 24, 16, 24));
+        screen.add(topBar("Kullanıcıya Göre Öneri",
+                        "Hedef kullanıcı seç  →  K benzer kullanıcı (heap)  →  X film  →  X×K öneri"),
+                BorderLayout.NORTH);
 
         kField1 = numField("3");
         xField1 = numField("5");
 
+        JPanel inner = vBox(BG, new EmptyBorder(20, 24, 16, 24));
         inner.add(paramRow(kField1, xField1));
         inner.add(Box.createVerticalStrut(14));
-
         inner.add(controlRow1());
         inner.add(Box.createVerticalStrut(14));
 
@@ -349,283 +197,170 @@ public class MainFrame extends JFrame {
 
         screen.add(inner, BorderLayout.NORTH);
         screen.add(scrollWrap(resultPanel1), BorderLayout.CENTER);
-
         return screen;
     }
 
     private JPanel controlRow1() {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        row.setBackground(BG);
-        row.setAlignmentX(LEFT_ALIGNMENT);
-
+        JPanel row = flowRow(BG, FlowLayout.LEFT, 10);
         targetCombo = styledCombo();
-
-        for (User user : targetUsers) {
-            targetCombo.addItem("Kullanıcı " + user.userId);
-        }
-
+        for (User u : targetUsers) targetCombo.addItem("Kullanıcı " + u.userId);
         targetCombo.setPreferredSize(new Dimension(170, 36));
 
-        JButton button = goldButton("Önerileri Getir");
-        button.addActionListener(e -> runScreen1());
+        JButton btn = goldButton("Önerileri Getir");
+        btn.addActionListener(e -> runScreen1());
 
-        row.add(fieldLabel("Hedef Kullanıcı"));
+        row.add(styledLabel("Hedef Kullanıcı", FONT_PLAIN_12, TEXT_DIM));
         row.add(targetCombo);
         row.add(Box.createHorizontalStrut(16));
-        row.add(button);
-
+        row.add(btn);
         return row;
     }
 
     private void runScreen1() {
-        int selectedIndex = targetCombo.getSelectedIndex();
+        int idx = targetCombo.getSelectedIndex();
+        if (idx < 0 || idx >= targetUsers.size()) return;
 
-        if (selectedIndex < 0 || selectedIndex >= targetUsers.size()) {
-            return;
-        }
+        int k = parseField(kField1, "K — benzer kullanıcı sayısı");
+        int x = parseField(xField1, "X — film sayısı");
+        if (k < 0 || x < 0) return;
 
-        // K = benzer kullanıcı sayısı
-        // X = her kullanıcıdan alınacak film sayısı
-        int similarUsers = parseField(kField1, "K — benzer kullanıcı sayısı");
-        int moviesPerUser = parseField(xField1, "X — film / kullanıcı");
-
-        if (similarUsers < 0 || moviesPerUser < 0) {
-            return;
-        }
-
-        User targetUser = targetUsers.get(selectedIndex);
+        User target = targetUsers.get(idx);
         showLoading(resultPanel1);
 
-        final int finalSimilarUsers = similarUsers;
-        final int finalMoviesPerUser = moviesPerUser;
-
         new Thread(() -> {
-            List<String> results = recommender.recommend(
-                    targetUser,
-                    finalSimilarUsers,
-                    finalMoviesPerUser
-            );
-
-            SwingUtilities.invokeLater(() ->
-                    displayResults(
-                            resultPanel1,
-                            results,
-                            finalSimilarUsers,
-                            finalMoviesPerUser
-                    )
-            );
+            List<String> results = recommender.recommend(target, k, x);
+            SwingUtilities.invokeLater(() -> displayResults(resultPanel1, results, k, x));
         }).start();
     }
 
-    // ─────────────────────────────────────────────────────
-    //  EKRAN 2: Film Puanına Göre Öneri
-    //
-    //  K = heap'ten kaç benzer kullanıcı çekileceği
-    //  X = her kullanıcıdan kaç film alınacağı
-    // ─────────────────────────────────────────────────────
+    // ── Ekran 2 ───────────────────────────────────────────
     private JPanel buildScreen2() {
         JPanel screen = new JPanel(new BorderLayout());
         screen.setBackground(BG);
-
-        screen.add(
-                topBar(
-                        "Filme Göre Öneri",
-                        "5 film puan ver  →  K benzer kullanıcı (heap)  →  X film  →  X×K öneri"
-                ),
-                BorderLayout.NORTH
-        );
-
-        JPanel inner = new JPanel();
-        inner.setLayout(new BoxLayout(inner, BoxLayout.Y_AXIS));
-        inner.setBackground(BG);
-        inner.setBorder(new EmptyBorder(20, 24, 16, 24));
+        screen.add(topBar("Filme Göre Öneri",
+                        "5 film puan ver  →  K benzer kullanıcı (heap)  →  X film  →  X×K öneri"),
+                BorderLayout.NORTH);
 
         kField2 = numField("3");
         xField2 = numField("5");
 
+        JPanel inner = vBox(BG, new EmptyBorder(20, 24, 16, 24));
         inner.add(paramRow(kField2, xField2));
         inner.add(Box.createVerticalStrut(14));
-
         inner.add(movieGrid());
         inner.add(Box.createVerticalStrut(12));
-
         inner.add(controlRow2());
         inner.add(Box.createVerticalStrut(14));
 
         resultPanel2 = resultContainer();
-        resultPanel2.add(placeholder("5 film seçin, puan girin ve 'Önerileri Getir' butonuna basın."));
+        resultPanel2.add(placeholder("5 film seçin, puan girin ve 'Önerileri Getir' butonuna basın"));
 
         screen.add(inner, BorderLayout.NORTH);
         screen.add(scrollWrap(resultPanel2), BorderLayout.CENTER);
-
         return screen;
     }
 
     private JPanel movieGrid() {
-        JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(CARD);
-        card.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(BORDER, 1, true),
-                        new EmptyBorder(14, 16, 14, 16)
-                )
-        );
-        card.setAlignmentX(LEFT_ALIGNMENT);
+        JPanel card = vBox(CARD, new EmptyBorder(14, 16, 14, 16));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER, 1, true),
+                new EmptyBorder(14, 16, 14, 16)));
 
-        JLabel header = new JLabel("5 Film Seç ve Puan Ver  (1–5 tam sayı)");
-        header.setFont(new Font("SansSerif", Font.BOLD, 13));
-        header.setForeground(GOLD);
-        header.setAlignmentX(LEFT_ALIGNMENT);
-
+        JLabel header = styledLabel("5 Film Seç ve Puan Ver  (1–5 tam sayı)", FONT_BOLD_13, GOLD);
         card.add(header);
         card.add(Box.createVerticalStrut(10));
 
-        JPanel columnHeader = new JPanel(new BorderLayout(8, 0));
-        columnHeader.setBackground(CARD);
-        columnHeader.setAlignmentX(LEFT_ALIGNMENT);
-        columnHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
-
-        JLabel filmHeader = new JLabel("Film Adı");
-        filmHeader.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        filmHeader.setForeground(TEXT_MUTED);
-
-        JLabel ratingHeader = new JLabel("Puan");
-        ratingHeader.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        ratingHeader.setForeground(TEXT_MUTED);
-        ratingHeader.setPreferredSize(new Dimension(70, 16));
-
-        columnHeader.add(filmHeader, BorderLayout.CENTER);
-        columnHeader.add(ratingHeader, BorderLayout.EAST);
-
-        card.add(columnHeader);
+        // Sütun başlığı
+        JPanel colHeader = new JPanel(new BorderLayout(8, 0));
+        colHeader.setBackground(CARD);
+        colHeader.setAlignmentX(LEFT_ALIGNMENT);
+        colHeader.setMaximumSize(new Dimension(Integer.MAX_VALUE, 20));
+        colHeader.add(styledLabel("Film Adı", FONT_PLAIN_11, TEXT_MUTED), BorderLayout.CENTER);
+        JLabel ph = styledLabel("Puan", FONT_PLAIN_11, TEXT_MUTED);
+        ph.setPreferredSize(new Dimension(70, 16));
+        colHeader.add(ph, BorderLayout.EAST);
+        card.add(colHeader);
         card.add(Box.createVerticalStrut(6));
 
         if (randomMovies == null || randomMovies.isEmpty()) {
-            JLabel emptyLabel = new JLabel("Film listesi bulunamadı. movies.csv dosyasını kontrol edin.");
-            emptyLabel.setForeground(RED_SOFT);
-            emptyLabel.setFont(new Font("SansSerif", Font.PLAIN, 12));
-            card.add(emptyLabel);
-
+            card.add(styledLabel("Film listesi bulunamadı. movies.csv dosyasını kontrol edin.",
+                    FONT_PLAIN_12, RED_SOFT));
             movieIdMap = new int[0];
             return card;
         }
 
         String[] titles = new String[randomMovies.size()];
-        movieIdMap = new int[randomMovies.size()];
-
+        movieIdMap      = new int[randomMovies.size()];
         for (int j = 0; j < randomMovies.size(); j++) {
-            titles[j] = randomMovies.get(j).title;
+            titles[j]    = randomMovies.get(j).title;
             movieIdMap[j] = randomMovies.get(j).movieId;
         }
 
         for (int i = 0; i < 5; i++) {
             movieCombos[i] = styledCombo();
+            for (String t : titles) movieCombos[i].addItem(t);
+            if (!randomMovies.isEmpty()) movieCombos[i].setSelectedIndex(i % randomMovies.size());
 
-            for (String title : titles) {
-                movieCombos[i].addItem(title);
-            }
-
-            if (!randomMovies.isEmpty()) {
-                movieCombos[i].setSelectedIndex(i % randomMovies.size());
-            }
-
-            ratingFields[i] = new JTextField("3");
+            ratingFields[i] = numField("3");
             ratingFields[i].setPreferredSize(new Dimension(60, 32));
-            ratingFields[i].setBackground(CARD);
-            ratingFields[i].setForeground(GOLD);
-            ratingFields[i].setCaretColor(GOLD);
-            ratingFields[i].setFont(new Font("SansSerif", Font.BOLD, 14));
             ratingFields[i].setHorizontalAlignment(JTextField.CENTER);
-            ratingFields[i].setBorder(
-                    BorderFactory.createCompoundBorder(
-                            BorderFactory.createLineBorder(BORDER, 1, true),
-                            new EmptyBorder(4, 6, 4, 6)
-                    )
-            );
+
+            JLabel numLabel = styledLabel((i + 1) + ".", FONT_BOLD_12, TEXT_MUTED);
+            numLabel.setPreferredSize(new Dimension(22, 32));
+
+            JPanel left = new JPanel(new BorderLayout(6, 0));
+            left.setBackground(CARD);
+            left.add(numLabel, BorderLayout.WEST);
+            left.add(movieCombos[i], BorderLayout.CENTER);
 
             JPanel row = new JPanel(new BorderLayout(8, 0));
             row.setBackground(CARD);
             row.setAlignmentX(LEFT_ALIGNMENT);
             row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
             row.setBorder(new EmptyBorder(2, 0, 2, 0));
-
-            JLabel numberLabel = new JLabel((i + 1) + ".");
-            numberLabel.setFont(new Font("SansSerif", Font.BOLD, 12));
-            numberLabel.setForeground(TEXT_MUTED);
-            numberLabel.setPreferredSize(new Dimension(22, 32));
-
-            JPanel left = new JPanel(new BorderLayout(6, 0));
-            left.setBackground(CARD);
-            left.add(numberLabel, BorderLayout.WEST);
-            left.add(movieCombos[i], BorderLayout.CENTER);
-
             row.add(left, BorderLayout.CENTER);
             row.add(ratingFields[i], BorderLayout.EAST);
 
             card.add(row);
-
-            if (i < 4) {
-                card.add(Box.createVerticalStrut(4));
-            }
+            if (i < 4) card.add(Box.createVerticalStrut(4));
         }
-
         return card;
     }
 
     private JPanel controlRow2() {
-        JPanel row = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        row.setBackground(BG);
-        row.setAlignmentX(LEFT_ALIGNMENT);
-
-        JButton button = goldButton("Önerileri Getir");
-        button.addActionListener(e -> runScreen2());
-
-        row.add(button);
-
+        JPanel row = flowRow(BG, FlowLayout.LEFT, 10);
+        JButton btn = goldButton("Önerileri Getir");
+        btn.addActionListener(e -> runScreen2());
+        row.add(btn);
         return row;
     }
 
     private void runScreen2() {
-        // K = benzer kullanıcı sayısı
-        // X = her kullanıcıdan alınacak film sayısı
-        int similarUsers = parseField(kField2, "K — benzer kullanıcı sayısı");
-        int moviesPerUser = parseField(xField2, "X — film / kullanıcı");
-
-        if (similarUsers < 0 || moviesPerUser < 0) {
-            return;
-        }
+        int k = parseField(kField2, "K — benzer kullanıcı sayısı");
+        int x = parseField(xField2, "X — film / kullanıcı");
+        if (k < 0 || x < 0) return;
 
         if (movieIdMap == null || movieIdMap.length == 0) {
             showErr("Film listesi boş. movies.csv dosyasını kontrol edin.");
             return;
         }
 
-        Map<Integer, Integer> ratings = new LinkedHashMap<>();
-        Set<Integer> selectedMovieIds = new HashSet<>();
+        Map<Integer, Integer> ratings         = new LinkedHashMap<>();
+        Set<Integer>          selectedMovieIds = new HashSet<>();
 
         for (int i = 0; i < 5; i++) {
-            int comboIndex = movieCombos[i].getSelectedIndex();
-
-            if (comboIndex < 0 || comboIndex >= movieIdMap.length) {
+            int comboIdx = movieCombos[i].getSelectedIndex();
+            if (comboIdx < 0 || comboIdx >= movieIdMap.length) {
                 showErr((i + 1) + ". satırda film seçili değil.");
                 return;
             }
 
-            int movieId = movieIdMap[comboIndex];
-
-            if (selectedMovieIds.contains(movieId)) {
-                showErr((i + 1) + ". satırda tekrar eden film var. Farklı filmler seçin.");
-                return;
-            }
-
-            String ratingText = ratingFields[i].getText().trim();
+            int movieId = movieIdMap[comboIdx];
 
             int rating;
-
             try {
-                rating = Integer.parseInt(ratingText);
-            } catch (NumberFormatException exception) {
+                rating = Integer.parseInt(ratingFields[i].getText().trim());
+            } catch (NumberFormatException e) {
                 showErr((i + 1) + ". puan tam sayı olmalı.");
                 return;
             }
@@ -635,58 +370,29 @@ public class MainFrame extends JFrame {
                 return;
             }
 
-            selectedMovieIds.add(movieId);
-            ratings.put(movieId, rating);
-        }
-
-        System.out.println("=== Ekran 2 Girdi ===");
-
-        for (Map.Entry<Integer, Integer> entry : ratings.entrySet()) {
-            int movieId = entry.getKey();
-            int rating = entry.getValue();
-
-            Movie movie = movies.get(movieId);
-
-            System.out.println(
-                    "Film ID: " + movieId +
-                            " | Puan: " + rating +
-                            " | Ad: " + (movie != null ? movie.title : "?")
-            );
+            if (selectedMovieIds.contains(movieId)) {
+                // Aynı film tekrar seçilmişse en yüksek puanı tut, hata verme
+                ratings.merge(movieId, rating, Math::max);
+            } else {
+                selectedMovieIds.add(movieId);
+                ratings.put(movieId, rating);
+            }
         }
 
         showLoading(resultPanel2);
-
-        final int finalSimilarUsers = similarUsers;
-        final int finalMoviesPerUser = moviesPerUser;
+        final int finalK = k, finalX = x;
         final Map<Integer, Integer> finalRatings = new LinkedHashMap<>(ratings);
 
         new Thread(() -> {
-            List<String> results = recommender.recommendFromRatings(
-                    finalRatings,
-                    finalSimilarUsers,
-                    finalMoviesPerUser
-            );
-
-            SwingUtilities.invokeLater(() ->
-                    displayResults(
-                            resultPanel2,
-                            results,
-                            finalSimilarUsers,
-                            finalMoviesPerUser
-                    )
-            );
+            List<String> results = recommender.recommendFromRatings(finalRatings, finalK, finalX);
+            SwingUtilities.invokeLater(() -> displayResults(resultPanel2, results, finalK, finalX));
         }).start();
     }
 
-    // ── Sonuçları göster ─────────────────────────────────
-    private void displayResults(JPanel panel,
-                                List<String> results,
-                                int similarUsers,
-                                int moviesPerUser) {
-
+    // ── Sonuç gösterimi ───────────────────────────────────
+    private void displayResults(JPanel panel, List<String> results, int k, int x) {
         panel.removeAll();
-
-        int targetTotal = similarUsers * moviesPerUser;
+        int target = k * x;
 
         if (results == null || results.isEmpty()) {
             panel.add(placeholder("Öneri bulunamadı. X veya K değerini küçültün."));
@@ -695,104 +401,63 @@ public class MainFrame extends JFrame {
             return;
         }
 
-        String summary = results.size()
-                + " öneri  (K="
-                + similarUsers
-                + " kullanıcı × X="
-                + moviesPerUser
-                + " film = hedef "
-                + targetTotal
-                + ")";
+        String summary = results.size() + " öneri  (K=" + k + " kullanıcı × X=" + x
+                + " film = hedef " + target + ")"
+                + (results.size() < target ? "  — bazı kullanıcıların uygun filmi yetersiz" : "");
 
-        if (results.size() < targetTotal) {
-            summary += "  — bazı kullanıcıların uygun filmi yetersiz";
-        }
-
-        JLabel header = new JLabel("  " + summary);
-        header.setFont(new Font("SansSerif", Font.BOLD, 12));
-        header.setForeground(GOLD);
+        JLabel header = styledLabel("  " + summary, FONT_BOLD_12, GOLD);
         header.setBorder(new EmptyBorder(10, 0, 10, 0));
         header.setAlignmentX(LEFT_ALIGNMENT);
-
         panel.add(header);
 
         for (int i = 0; i < results.size(); i++) {
-            if (i % moviesPerUser == 0) {
-                int userNo = i / moviesPerUser + 1;
-
-                JLabel groupLabel = new JLabel("   ▸  Benzer Kullanıcı " + userNo);
-                groupLabel.setFont(new Font("SansSerif", Font.BOLD, 11));
-                groupLabel.setForeground(TEXT_MUTED);
-                groupLabel.setBorder(new EmptyBorder(i == 0 ? 0 : 12, 0, 4, 0));
-                groupLabel.setAlignmentX(LEFT_ALIGNMENT);
-
-                panel.add(groupLabel);
+            if (i % x == 0) {
+                JLabel group = styledLabel("   ▸  Benzer Kullanıcı " + (i / x + 1),
+                        FONT_BOLD_11, TEXT_MUTED);
+                group.setBorder(new EmptyBorder(i == 0 ? 0 : 12, 0, 4, 0));
+                group.setAlignmentX(LEFT_ALIGNMENT);
+                panel.add(group);
             }
-
-            panel.add(movieCard(i + 1, results.get(i), i / moviesPerUser + 1));
+            panel.add(movieCard(i + 1, results.get(i)));
             panel.add(Box.createVerticalStrut(3));
         }
 
         panel.add(Box.createVerticalStrut(20));
-
         panel.revalidate();
         panel.repaint();
     }
 
-    private JPanel movieCard(int rank, String title, int userNo) {
+    private JPanel movieCard(int rank, String title) {
         JPanel row = new JPanel(new BorderLayout(10, 0));
         row.setBackground(CARD);
-        row.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(BORDER, 1, true),
-                        new EmptyBorder(9, 14, 9, 14)
-                )
-        );
+        row.setBorder(compoundBorder(BORDER, 9, 14));
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 46));
         row.setAlignmentX(LEFT_ALIGNMENT);
 
-        JLabel badge = new JLabel(String.valueOf(rank), SwingConstants.CENTER);
-        badge.setFont(new Font("SansSerif", Font.BOLD, 11));
-        badge.setForeground(GOLD);
+        JLabel badge = styledLabel(String.valueOf(rank), FONT_BOLD_11, GOLD);
         badge.setOpaque(true);
         badge.setBackground(GOLD_DIM);
         badge.setPreferredSize(new Dimension(28, 28));
+        badge.setHorizontalAlignment(SwingConstants.CENTER);
         badge.setBorder(BorderFactory.createLineBorder(new Color(90, 70, 20), 1, true));
-
-        JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        titleLabel.setForeground(TEXT);
 
         JPanel left = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
         left.setBackground(CARD);
         left.add(badge);
-        left.add(titleLabel);
-
-        JLabel userBadge = new JLabel(" U" + userNo + " ");
-        userBadge.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        userBadge.setForeground(TEXT_DIM);
-        userBadge.setBorder(BorderFactory.createLineBorder(BORDER, 1, true));
+        left.add(styledLabel(title, FONT_PLAIN_13, TEXT));
 
         MouseAdapter hover = new MouseAdapter() {
-            @Override
-            public void mouseEntered(MouseEvent e) {
-                row.setBackground(CARD_HOVER);
-                left.setBackground(CARD_HOVER);
+            @Override public void mouseEntered(MouseEvent e) {
+                row.setBackground(CARD_HOVER); left.setBackground(CARD_HOVER);
             }
-
-            @Override
-            public void mouseExited(MouseEvent e) {
-                row.setBackground(CARD);
-                left.setBackground(CARD);
+            @Override public void mouseExited(MouseEvent e) {
+                row.setBackground(CARD); left.setBackground(CARD);
             }
         };
-
         row.addMouseListener(hover);
         left.addMouseListener(hover);
 
         row.add(left, BorderLayout.CENTER);
-        row.add(userBadge, BorderLayout.EAST);
-
         return row;
     }
 
@@ -803,304 +468,183 @@ public class MainFrame extends JFrame {
         row.setAlignmentX(LEFT_ALIGNMENT);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 82));
 
-        row.add(
-                paramCard(
-                        "K  —  Benzer Kullanıcı Sayısı",
-                        kField,
-                        "Heap'ten kaç benzer kullanıcı çekilsin"
-                )
-        );
+        JLabel totalLabel = styledLabel("15", FONT_BOLD_22, GOLD);
+        updateTotal(kField, xField, totalLabel);
 
-        row.add(
-                paramCard(
-                        "X  —  Film / Kullanıcı",
-                        xField,
-                        "Her kullanıcıdan kaç film alınsın"
-                )
-        );
+        row.add(paramCard("K  —  Benzer Kullanıcı Sayısı", kField, "Heap'ten kaç benzer kullanıcı çekilsin"));
+        row.add(paramCard("X  —  Film / Kullanıcı",        xField, "Her kullanıcıdan kaç film alınsın"));
+        row.add(staticCard("Toplam Öneri  (X × K)",         totalLabel));
 
-        JLabel totalLabel = totalLabel(kField, xField);
-
-        row.add(
-                staticCard(
-                        "Toplam Öneri  (X × K)",
-                        totalLabel
-                )
-        );
-
-        KeyAdapter keyAdapter = new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) {
+        KeyAdapter ka = new KeyAdapter() {
+            @Override public void keyReleased(KeyEvent e) {
                 updateTotal(kField, xField, totalLabel);
             }
         };
-
-        kField.addKeyListener(keyAdapter);
-        xField.addKeyListener(keyAdapter);
-
+        kField.addKeyListener(ka);
+        xField.addKeyListener(ka);
         return row;
     }
 
     private JPanel paramCard(String label, JTextField field, String hint) {
-        JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(CARD);
-        card.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(BORDER, 1, true),
-                        new EmptyBorder(10, 14, 10, 14)
-                )
-        );
-
-        JLabel labelComponent = new JLabel(label);
-        labelComponent.setFont(new Font("SansSerif", Font.PLAIN, 10));
-        labelComponent.setForeground(TEXT_MUTED);
-        labelComponent.setAlignmentX(LEFT_ALIGNMENT);
-
-        field.setFont(new Font("SansSerif", Font.BOLD, 22));
+        JPanel card = vBox(CARD, new EmptyBorder(10, 14, 10, 14));
+        card.setBorder(compoundBorder(BORDER, 10, 14));
+        field.setFont(FONT_BOLD_22);
         field.setForeground(GOLD);
         field.setBackground(CARD);
         field.setBorder(null);
         field.setCaretColor(GOLD);
         field.setAlignmentX(LEFT_ALIGNMENT);
-
-        JLabel hintLabel = new JLabel(hint);
-        hintLabel.setFont(new Font("SansSerif", Font.PLAIN, 10));
-        hintLabel.setForeground(TEXT_MUTED);
-        hintLabel.setAlignmentX(LEFT_ALIGNMENT);
-
-        card.add(labelComponent);
+        card.add(styledLabel(label, FONT_PLAIN_10, TEXT_MUTED));
         card.add(Box.createVerticalStrut(2));
         card.add(field);
         card.add(Box.createVerticalStrut(2));
-        card.add(hintLabel);
-
+        card.add(styledLabel(hint, FONT_PLAIN_10, TEXT_MUTED));
         return card;
     }
 
     private JPanel staticCard(String label, JLabel valueLabel) {
-        JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBackground(CARD);
-        card.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(BORDER, 1, true),
-                        new EmptyBorder(10, 14, 10, 14)
-                )
-        );
-
-        JLabel labelComponent = new JLabel(label);
-        labelComponent.setFont(new Font("SansSerif", Font.PLAIN, 10));
-        labelComponent.setForeground(TEXT_MUTED);
-        labelComponent.setAlignmentX(LEFT_ALIGNMENT);
-
+        JPanel card = vBox(CARD, new EmptyBorder(10, 14, 10, 14));
+        card.setBorder(compoundBorder(BORDER, 10, 14));
         valueLabel.setAlignmentX(LEFT_ALIGNMENT);
-
-        card.add(labelComponent);
+        card.add(styledLabel(label, FONT_PLAIN_10, TEXT_MUTED));
         card.add(Box.createVerticalStrut(2));
         card.add(valueLabel);
-
         return card;
-    }
-
-    private JLabel totalLabel(JTextField kField, JTextField xField) {
-        JLabel label = new JLabel("15");
-        label.setFont(new Font("SansSerif", Font.BOLD, 22));
-        label.setForeground(GOLD);
-
-        updateTotal(kField, xField, label);
-
-        return label;
     }
 
     private void updateTotal(JTextField kField, JTextField xField, JLabel label) {
         try {
             int k = Integer.parseInt(kField.getText().trim());
             int x = Integer.parseInt(xField.getText().trim());
-
             label.setForeground(GOLD);
             label.setText(String.valueOf(k * x));
-        } catch (NumberFormatException exception) {
+        } catch (NumberFormatException e) {
             label.setForeground(RED_SOFT);
             label.setText("?");
         }
     }
 
-    // ── Yardımcı GUI bileşenleri ──────────────────────────
+    // ── Küçük GUI yardımcıları ────────────────────────────
+
+    /** Dikey BoxLayout panel */
+    private JPanel vBox(Color bg, EmptyBorder padding) {
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBackground(bg);
+        if (padding != null) p.setBorder(padding);
+        p.setAlignmentX(LEFT_ALIGNMENT);
+        return p;
+    }
+
+    /** FlowLayout panel */
+    private JPanel flowRow(Color bg, int align, int gap) {
+        JPanel p = new JPanel(new FlowLayout(align, gap, 0));
+        p.setBackground(bg);
+        p.setAlignmentX(LEFT_ALIGNMENT);
+        return p;
+    }
+
+    /** Tek satır JLabel */
+    private JLabel styledLabel(String text, Font font, Color color) {
+        JLabel l = new JLabel(text);
+        l.setFont(font);
+        l.setForeground(color);
+        l.setAlignmentX(LEFT_ALIGNMENT);
+        return l;
+    }
+
+    /** Compound border kısayolu */
+    private Border compoundBorder(Color lineColor, int vPad, int hPad) {
+        return BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(lineColor, 1, true),
+                new EmptyBorder(vPad, hPad, vPad, hPad));
+    }
+
     private JPanel topBar(String title, String subtitle) {
         JPanel bar = new JPanel(new BorderLayout());
         bar.setBackground(SURFACE);
-        bar.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER),
-                        new EmptyBorder(16, 24, 16, 24)
-                )
-        );
+        bar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, BORDER),
+                new EmptyBorder(16, 24, 16, 24)));
 
-        JLabel titleLabel = new JLabel(title);
-        titleLabel.setFont(new Font("Serif", Font.BOLD, 17));
-        titleLabel.setForeground(TEXT);
-
-        JLabel subtitleLabel = new JLabel(subtitle);
-        subtitleLabel.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        subtitleLabel.setForeground(TEXT_MUTED);
-
-        JPanel texts = new JPanel();
-        texts.setLayout(new BoxLayout(texts, BoxLayout.Y_AXIS));
-        texts.setBackground(SURFACE);
-        texts.add(titleLabel);
+        JPanel texts = vBox(SURFACE, null);
+        JLabel t = styledLabel(title, new Font("Serif", Font.BOLD, 17), TEXT);
+        texts.add(t);
         texts.add(Box.createVerticalStrut(3));
-        texts.add(subtitleLabel);
-
+        texts.add(styledLabel(subtitle, FONT_PLAIN_11, TEXT_MUTED));
         bar.add(texts, BorderLayout.WEST);
-
         return bar;
     }
 
     private JComboBox<String> styledCombo() {
-        JComboBox<String> comboBox = new JComboBox<>();
-
-        comboBox.setBackground(CARD);
-        comboBox.setForeground(TEXT);
-        comboBox.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        comboBox.setBorder(BorderFactory.createLineBorder(BORDER, 1, true));
-
-        comboBox.setRenderer(new DefaultListCellRenderer() {
+        JComboBox<String> cb = new JComboBox<>();
+        cb.setBackground(CARD);
+        cb.setForeground(TEXT);
+        cb.setFont(FONT_PLAIN_12);
+        cb.setBorder(BorderFactory.createLineBorder(BORDER, 1, true));
+        cb.setRenderer(new DefaultListCellRenderer() {
             @Override
-            public Component getListCellRendererComponent(JList<?> list,
-                                                          Object value,
-                                                          int index,
-                                                          boolean isSelected,
-                                                          boolean cellHasFocus) {
-
-                JLabel label = (JLabel) super.getListCellRendererComponent(
-                        list,
-                        value,
-                        index,
-                        isSelected,
-                        cellHasFocus
-                );
-
-                if (isSelected) {
-                    label.setBackground(GOLD_DIM);
-                    label.setForeground(GOLD);
-                } else {
-                    label.setBackground(CARD);
-                    label.setForeground(TEXT);
-                }
-
-                label.setBorder(new EmptyBorder(5, 10, 5, 10));
-
-                return label;
+            public Component getListCellRendererComponent(JList<?> list, Object value,
+                                                          int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel l = (JLabel) super.getListCellRendererComponent(
+                        list, value, index, isSelected, cellHasFocus);
+                l.setBackground(isSelected ? GOLD_DIM : CARD);
+                l.setForeground(isSelected ? GOLD     : TEXT);
+                l.setBorder(new EmptyBorder(5, 10, 5, 10));
+                return l;
             }
         });
-
-        return comboBox;
+        return cb;
     }
 
     private JButton goldButton(String text) {
-        JButton button = new JButton(text) {
-            @Override
-            protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-
-                g2.setRenderingHint(
-                        RenderingHints.KEY_ANTIALIASING,
-                        RenderingHints.VALUE_ANTIALIAS_ON
-                );
-
-                Color backgroundColor;
-
-                if (getModel().isPressed()) {
-                    backgroundColor = GOLD.darker();
-                } else if (getModel().isRollover()) {
-                    backgroundColor = GOLD.brighter();
-                } else {
-                    backgroundColor = GOLD;
-                }
-
-                g2.setColor(backgroundColor);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
-
-                g2.setColor(new Color(20, 15, 5));
-                g2.setFont(getFont());
-
-                FontMetrics fm = g2.getFontMetrics();
-
-                g2.drawString(
-                        getText(),
-                        (getWidth() - fm.stringWidth(getText())) / 2,
-                        (getHeight() + fm.getAscent() - fm.getDescent()) / 2
-                );
-
-                g2.dispose();
-            }
-        };
-
-        button.setFont(new Font("SansSerif", Font.BOLD, 13));
-        button.setPreferredSize(new Dimension(155, 36));
-        button.setBorderPainted(false);
-        button.setContentAreaFilled(false);
-        button.setFocusPainted(false);
-        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-        return button;
-    }
-
-    private JLabel fieldLabel(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        label.setForeground(TEXT_DIM);
-
-        return label;
-    }
-
-    private JLabel placeholder(String text) {
-        JLabel label = new JLabel(text);
-        label.setFont(new Font("SansSerif", Font.ITALIC, 13));
-        label.setForeground(TEXT_MUTED);
-        label.setBorder(new EmptyBorder(20, 0, 0, 0));
-        label.setAlignmentX(LEFT_ALIGNMENT);
-
-        return label;
+        JButton btn = new JButton(text);
+        btn.setFont(FONT_BOLD_13);
+        btn.setPreferredSize(new Dimension(155, 36));
+        btn.setBackground(GOLD);
+        btn.setForeground(new Color(20, 15, 5));
+        btn.setOpaque(true);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return btn;
     }
 
     private JTextField numField(String value) {
-        JTextField field = new JTextField(value, 4);
-
-        field.setBackground(CARD);
-        field.setForeground(GOLD);
-        field.setCaretColor(GOLD);
-        field.setFont(new Font("SansSerif", Font.BOLD, 14));
-        field.setBorder(
-                BorderFactory.createCompoundBorder(
-                        BorderFactory.createLineBorder(BORDER, 1, true),
-                        new EmptyBorder(6, 10, 6, 10)
-                )
-        );
-
-        return field;
+        JTextField f = new JTextField(value, 4);
+        f.setBackground(CARD);
+        f.setForeground(GOLD);
+        f.setCaretColor(GOLD);
+        f.setFont(FONT_BOLD_13);
+        f.setBorder(compoundBorder(BORDER, 6, 10));
+        return f;
     }
 
     private JPanel resultContainer() {
-        JPanel panel = new JPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBackground(BG);
-
-        return panel;
+        JPanel p = new JPanel();
+        p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
+        p.setBackground(BG);
+        return p;
     }
 
     private JScrollPane scrollWrap(JPanel panel) {
-        JScrollPane scrollPane = new JScrollPane(panel);
+        JScrollPane sp = new JScrollPane(panel);
+        sp.setBackground(BG);
+        sp.getViewport().setBackground(BG);
+        sp.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
+        sp.getVerticalScrollBar().setUnitIncrement(16);
+        sp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        sp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        return sp;
+    }
 
-        scrollPane.setBackground(BG);
-        scrollPane.getViewport().setBackground(BG);
-        scrollPane.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, BORDER));
-        scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-
-        return scrollPane;
+    private JLabel placeholder(String text) {
+        JLabel l = new JLabel(text);
+        l.setFont(new Font("SansSerif", Font.ITALIC, 13));
+        l.setForeground(TEXT_MUTED);
+        l.setBorder(new EmptyBorder(20, 0, 0, 0));
+        l.setAlignmentX(LEFT_ALIGNMENT);
+        return l;
     }
 
     private void showLoading(JPanel panel) {
@@ -1112,37 +656,42 @@ public class MainFrame extends JFrame {
 
     private int parseField(JTextField field, String name) {
         try {
-            int value = Integer.parseInt(field.getText().trim());
-
-            if (value <= 0) {
-                showErr(name + " 0'dan büyük olmalı.");
-                return -1;
-            }
-
-            return value;
-        } catch (NumberFormatException exception) {
+            int v = Integer.parseInt(field.getText().trim());
+            if (v <= 0) { showErr(name + " 0'dan büyük olmalı."); return -1; }
+            return v;
+        } catch (NumberFormatException e) {
             showErr(name + " tam sayı olmalı.");
             return -1;
         }
     }
 
-    private void showErr(String message) {
-        JOptionPane.showMessageDialog(
-                this,
-                message,
-                "Hata",
-                JOptionPane.ERROR_MESSAGE
-        );
+    private void showErr(String msg) {
+        JOptionPane.showMessageDialog(this, msg, "Hata", JOptionPane.ERROR_MESSAGE);
     }
 
-    public static void main(String[] args) {
-        try {
-            UIManager.setLookAndFeel(
-                    UIManager.getCrossPlatformLookAndFeelClassName()
-            );
-        } catch (Exception ignored) {
-        }
+    private JSeparator divider() {
+        JSeparator sep = new JSeparator();
+        sep.setForeground(BORDER);
+        sep.setMaximumSize(new Dimension(210, 1));
+        sep.setAlignmentX(LEFT_ALIGNMENT);
+        return sep;
+    }
 
+    private JPanel statRow(String label, String value) {
+        JPanel row = new JPanel(new BorderLayout());
+        row.setBackground(SURFACE);
+        row.setMaximumSize(new Dimension(210, 26));
+        row.setAlignmentX(LEFT_ALIGNMENT);
+        row.setBorder(new EmptyBorder(0, 18, 0, 14));
+        row.add(styledLabel(label, FONT_PLAIN_12, TEXT_DIM),  BorderLayout.WEST);
+        row.add(styledLabel(value, FONT_BOLD_12,  GOLD),      BorderLayout.EAST);
+        return row;
+    }
+
+    // ── Main ─────────────────────────────────────────────
+    public static void main(String[] args) {
+        try { UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName()); }
+        catch (Exception ignored) {}
         SwingUtilities.invokeLater(MainFrame::new);
     }
 }
