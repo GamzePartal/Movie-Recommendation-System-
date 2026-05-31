@@ -220,7 +220,7 @@ public class MainFrame extends JFrame {
         int idx = targetCombo.getSelectedIndex();
         if (idx < 0 || idx >= targetUsers.size()) return;
 
-        int k = parseField(kField1, "K — benzer kullanıcı sayısı");
+        int k = parseField(kField1, "K — benzer kullanıcı sayısı", allUsers.size());
         int x = parseField(xField1, "X — film sayısı");
         if (k < 0 || x < 0) return;
 
@@ -336,7 +336,7 @@ public class MainFrame extends JFrame {
     }
 
     private void runScreen2() {
-        int k = parseField(kField2, "K — benzer kullanıcı sayısı");
+        int k = parseField(kField2, "K — benzer kullanıcı sayısı", allUsers.size());
         int x = parseField(xField2, "X — film / kullanıcı");
         if (k < 0 || x < 0) return;
 
@@ -371,12 +371,11 @@ public class MainFrame extends JFrame {
             }
 
             if (selectedMovieIds.contains(movieId)) {
-                // Aynı film tekrar seçilmişse en yüksek puanı tut, hata verme
-                ratings.merge(movieId, rating, Math::max);
-            } else {
-                selectedMovieIds.add(movieId);
-                ratings.put(movieId, rating);
+                showErr((i + 1) + ". satırda aynı film başka bir satırda zaten seçili.\nLütfen 5 farklı film seçin.");
+                return;
             }
+            selectedMovieIds.add(movieId);
+            ratings.put(movieId, rating);
         }
 
         showLoading(resultPanel2);
@@ -655,9 +654,14 @@ public class MainFrame extends JFrame {
     }
 
     private int parseField(JTextField field, String name) {
+        return parseField(field, name, Integer.MAX_VALUE);
+    }
+
+    private int parseField(JTextField field, String name, int max) {
         try {
             int v = Integer.parseInt(field.getText().trim());
             if (v <= 0) { showErr(name + " 0'dan büyük olmalı."); return -1; }
+            if (v > max) { showErr(name + " en fazla " + max + " olabilir."); return -1; }
             return v;
         } catch (NumberFormatException e) {
             showErr(name + " tam sayı olmalı.");
