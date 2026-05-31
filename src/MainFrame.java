@@ -8,7 +8,6 @@ import java.util.List;
 
 public class MainFrame extends JFrame {
 
-    // ── Renkler ──────────────────────────────────────────
     static final Color BG         = new Color(12, 12, 18);
     static final Color SURFACE    = new Color(20, 20, 30);
     static final Color CARD       = new Color(26, 26, 40);
@@ -21,7 +20,6 @@ public class MainFrame extends JFrame {
     static final Color TEXT_MUTED = new Color(65, 65, 90);
     static final Color RED_SOFT   = new Color(200, 80, 80);
 
-    // ── Fontlar ───────────────────────────────────────────
     static final Font FONT_BOLD_22  = new Font("SansSerif", Font.BOLD, 22);
     static final Font FONT_BOLD_13  = new Font("SansSerif", Font.BOLD, 13);
     static final Font FONT_BOLD_12  = new Font("SansSerif", Font.BOLD, 12);
@@ -31,29 +29,27 @@ public class MainFrame extends JFrame {
     static final Font FONT_PLAIN_11 = new Font("SansSerif", Font.PLAIN, 11);
     static final Font FONT_PLAIN_10 = new Font("SansSerif", Font.PLAIN, 10);
 
-    // ── Veri ─────────────────────────────────────────────
+    //veriler
     private List<User>          allUsers;
     private List<User>          targetUsers;
     private Map<Integer, Movie> movies;
     private Recommender         recommender;
     private List<Movie>         randomMovies;
 
-    // ── Ekran bileşenleri ─────────────────────────────────
+    //ekran componentleri
     private JComboBox<String>   targetCombo;
     private JTextField          kField1, xField1;
     private JPanel              resultPanel1;
-
     private JComboBox<String>[] movieCombos  = new JComboBox[5];
     private JTextField[]        ratingFields = new JTextField[5];
     private int[]               movieIdMap;
     private JTextField          kField2, xField2;
     private JPanel              resultPanel2;
-
     private JPanel   contentArea;
     private JButton[] navBtns   = new JButton[2];
     private int       activeTab = 0;
 
-    // ─────────────────────────────────────────────────────
+
     public MainFrame() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1050, 700);
@@ -65,7 +61,7 @@ public class MainFrame extends JFrame {
         setVisible(true);
     }
 
-    // ── CSV yolu ──────────────────────────────────────────
+    // CSV yolu
     private String csvPath(String name) {
         for (String path : new String[]{
                 name,
@@ -77,7 +73,7 @@ public class MainFrame extends JFrame {
         return "src" + File.separator + "CSV" + File.separator + name;
     }
 
-    // ── Veri yükleme ──────────────────────────────────────
+    //Veri yükleme
     private void loadData() {
         allUsers    = CSVReader.readMainData(csvPath("main_data.csv"));
         targetUsers = CSVReader.readTargetUsers(csvPath("target_user.csv"));
@@ -103,7 +99,7 @@ public class MainFrame extends JFrame {
         }
     }
 
-    // ── Ana layout ────────────────────────────────────────
+
     private void buildUI() {
         setLayout(new BorderLayout());
         add(buildSidebar(), BorderLayout.WEST);
@@ -115,7 +111,7 @@ public class MainFrame extends JFrame {
         add(contentArea, BorderLayout.CENTER);
     }
 
-    // ── Sidebar ───────────────────────────────────────────
+
     private JPanel buildSidebar() {
         JPanel sb = new JPanel();
         sb.setLayout(new BoxLayout(sb, BoxLayout.Y_AXIS));
@@ -151,7 +147,7 @@ public class MainFrame extends JFrame {
         return sb;
     }
 
-    // Sidebar nav butonu — paintComponent yok, UIManager ile renklendirildi
+
     private JButton navButton(String text, int tabIndex) {
         JButton btn = new JButton(text);
         btn.setFont(FONT_PLAIN_13);
@@ -175,7 +171,7 @@ public class MainFrame extends JFrame {
         ((CardLayout) contentArea.getLayout()).show(contentArea, index == 0 ? "s1" : "s2");
     }
 
-    // ── Ekran 1 ───────────────────────────────────────────
+
     private JPanel buildScreen1() {
         JPanel screen = new JPanel(new BorderLayout());
         screen.setBackground(BG);
@@ -233,7 +229,6 @@ public class MainFrame extends JFrame {
         }).start();
     }
 
-    // ── Ekran 2 ───────────────────────────────────────────
     private JPanel buildScreen2() {
         JPanel screen = new JPanel(new BorderLayout());
         screen.setBackground(BG);
@@ -388,7 +383,7 @@ public class MainFrame extends JFrame {
         }).start();
     }
 
-    // ── Sonuç gösterimi ───────────────────────────────────
+
     private void displayResults(JPanel panel, List<String> results, int k, int x) {
         panel.removeAll();
         int target = k * x;
@@ -460,7 +455,7 @@ public class MainFrame extends JFrame {
         return row;
     }
 
-    // ── Parametre satırı ──────────────────────────────────
+
     private JPanel paramRow(JTextField kField, JTextField xField) {
         JPanel row = new JPanel(new GridLayout(1, 3, 12, 0));
         row.setBackground(BG);
@@ -523,9 +518,8 @@ public class MainFrame extends JFrame {
         }
     }
 
-    // ── Küçük GUI yardımcıları ────────────────────────────
 
-    /** Dikey BoxLayout panel */
+
     private JPanel vBox(Color bg, EmptyBorder padding) {
         JPanel p = new JPanel();
         p.setLayout(new BoxLayout(p, BoxLayout.Y_AXIS));
@@ -535,7 +529,7 @@ public class MainFrame extends JFrame {
         return p;
     }
 
-    /** FlowLayout panel */
+
     private JPanel flowRow(Color bg, int align, int gap) {
         JPanel p = new JPanel(new FlowLayout(align, gap, 0));
         p.setBackground(bg);
@@ -543,7 +537,7 @@ public class MainFrame extends JFrame {
         return p;
     }
 
-    /** Tek satır JLabel */
+
     private JLabel styledLabel(String text, Font font, Color color) {
         JLabel l = new JLabel(text);
         l.setFont(font);
@@ -552,7 +546,7 @@ public class MainFrame extends JFrame {
         return l;
     }
 
-    /** Compound border kısayolu */
+
     private Border compoundBorder(Color lineColor, int vPad, int hPad) {
         return BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(lineColor, 1, true),
@@ -692,7 +686,7 @@ public class MainFrame extends JFrame {
         return row;
     }
 
-    // ── Main ─────────────────────────────────────────────
+
     public static void main(String[] args) {
         try { UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName()); }
         catch (Exception ignored) {}
